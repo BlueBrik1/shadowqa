@@ -34,6 +34,7 @@ import { SlackAdapter } from "../adapters/slack.js";
 import { inspect } from "../planner/inspect.js";
 import { IdentityLinks } from "./identity.js";
 import { repairFinding } from "../qa/repair.js";
+import { registerLiveRoutes } from "../live/bridge.js";
 const params = (r: FastifyRequest) => r.params as Record<string, string>;
 const actor = (r: FastifyRequest) => (r as any).principal as Principal;
 export function body(r: FastifyRequest): any {
@@ -389,6 +390,7 @@ export function createServer(
   api.post("/findings/:id/repair", async (r) =>
     repairFinding(db, model, actor(r), params(r).id),
   );
+  registerLiveRoutes(api, db, body);
   api.post("/projects/:id/scan", async (r) => {
     const a = actor(r);
     authorize(a, params(r).id, ["admin", "developer"]);

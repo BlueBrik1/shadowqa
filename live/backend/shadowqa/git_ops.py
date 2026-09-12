@@ -36,8 +36,13 @@ async def status(ws: Workspace) -> dict:
     try:
         branch = await _git(ws, "rev-parse", "--abbrev-ref", "HEAD")
         head = await _git(ws, "rev-parse", "--short", "HEAD")
-        porcelain = await _git(ws, "status", "--porcelain")
-        dirty = [l[3:] for l in porcelain.splitlines() if l.strip()]
+        porcelain = await _git(ws, "status", "--porcelain", "-z")
+        # -z: NUL-separated "XY path" records; immune to the stripping/quoting that mangles line output.
+        dirty = []
+        for rec in porcelain.split("\0"):
+            m = re.match(r"^(?:[ MADRCU?!]{2}|[MADRCU?!]) (.+)$", rec)  # 2nd form: leading space lost to strip()
+            if rec and m:
+                dirty.append(m.group(1))
         return {"available": True, "branch": branch, "head": head, "dirty_files": dirty[:50], "dirty_count": len(dirty),
                 "github_repo": settings.github_repo or None, "pr_enabled": bool(settings.github_repo and settings.github_token)}
     except (GitError, FileNotFoundError) as exc:

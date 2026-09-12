@@ -57,7 +57,8 @@ class Workspace:
         return p
 
     def rel(self, path: Path | str) -> str:
-        return os.path.relpath(str(Path(path).resolve()), str(self.root))
+        # Always POSIX-style: paths travel to the browser overlay, source maps and the ShadowQA service.
+        return os.path.relpath(str(Path(path).resolve()), str(self.root)).replace(os.sep, "/")
 
     def can_read(self, rel: str) -> bool:
         try:

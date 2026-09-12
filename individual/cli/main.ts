@@ -5,6 +5,8 @@ import { stdin, stdout } from "node:process";
 import path from "node:path";
 import chalk from "chalk";
 import { AppError, sanitize } from "../../src/core/security.js";
+import { MODE_TO_AUTONOMY, registerLiveCommands } from "../../src/cli/live.js";
+import { GLYPH } from "../../src/cli/ui.js";
 import { openDatabase, databaseLabel } from "../core/db.js";
 import { Store } from "../core/store.js";
 import { detectAll } from "../core/backends.js";
@@ -943,6 +945,16 @@ cli
       );
   });
 
+registerLiveCommands(cli, {
+  json,
+  output: out,
+  autonomyForProject: async (id) => {
+    const p = (await (await client()).call<any[]>("/projects")).find((x) => x.id === id);
+    if (!p) throw new AppError("NO_PROJECT", `No project '${id}'. Run: shadowqa-individual project list`);
+    return MODE_TO_AUTONOMY[p.mode] ?? "approve_all";
+  },
+});
+
 cli
   .command("watch <project>")
   .description("Watch saved files and run the checks on every pause in typing")
@@ -1090,11 +1102,19 @@ cli
       line("CONVERSATIONS", status.conversations.length);
       line("OPEN FINDINGS", status.findings);
       console.log(
-        "\n  1  Extract context\n  2  Generate a plan\n  3  Review and approve\n  4  Tasks and sessions\n  5  Findings\n  6  Change mode or backend\n  7  Pair the extension\n  0  Exit\n",
+        "\n  1  Extract context\n  2  Generate a plan\n  3  Review and approve\n  4  Tasks and sessions\n  5  Findings\n  6  Change mode or backend\n  7  Pair the extension\n  8  " +
+          GLYPH.live +
+          " Live runtime incidents\n  0  Exit\n",
       );
       const choice = await ask("Choose →");
       if (choice === "0") break;
       try {
+        if (choice === "8") {
+          const { LiveClient, renderIncidents, renderIncident } = await import("../../src/cli/live.js");
+          renderIncidents(await new LiveClient().call("/incidents?limit=20"));
+          const id = await ask("Incident ID to inspect (Enter to return):");
+          if (id) renderIncident(await new LiveClient().call(`/incidents/${id}`));
+        }
         if (choice === "1") {
           const id = await ask("Project:");
           const result = await service.call<any>(

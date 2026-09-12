@@ -1,8 +1,9 @@
 """Settings for ShadowQA Live.
 
 Live is the runtime half of ShadowQA: it watches an application while it runs and turns a
-failing click into a verified fix. It shares one Gemini key, one automation vocabulary and one
-findings list with the ShadowQA service (``shadowqa serve``) so the two read as one product.
+failing click into a verified fix. It diagnoses with Anthropic and OpenAI, and shares one
+automation vocabulary and one findings list with the ShadowQA service (``shadowqa serve``) so the
+two read as one product.
 """
 import os
 from pathlib import Path
@@ -35,7 +36,8 @@ class Settings:
         self.mongo_url = os.environ.get("MONGO_URL", "")
         self.db_name = os.environ.get("DB_NAME", "shadowqa_live")
         self.bridge_token = os.environ.get("SHADOWQA_BRIDGE_TOKEN", "")
-        default_workspace = os.environ.get("SHADOWQA_WORKSPACE_CONFIG") or str(LIVE_DIR / "shadowqa.workspace.json")
+        default_workspace = (os.environ.get("SHADOWQA_WORKSPACE") or os.environ.get("SHADOWQA_WORKSPACE_CONFIG")
+                             or str(LIVE_DIR / "shadowqa.workspace.json"))
         self.workspace_config_path = Path(default_workspace)
         self.live_data_dir = os.environ.get("SHADOWQA_LIVE_DATA") or str(LIVE_DIR / ".shadowqa" / "live")
         self.dev_server_url = os.environ.get("SHADOWQA_DEV_SERVER_URL", "http://localhost:3000").rstrip("/")

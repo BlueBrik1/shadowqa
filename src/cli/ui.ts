@@ -12,6 +12,7 @@ import { sanitize } from "../core/security.js";
 export const BRAND = { charcoal: "#1C1C1C", offwhite: "#F4F1EA" } as const;
 export const ink = chalk.hex(BRAND.offwhite);
 export const soft = chalk.hex("#A9A59D");
+export const dim = chalk.hex("#6F6C66");
 export const bad = chalk.hex("#E5484D");
 export const good = chalk.hex("#3DD68C");
 /** Kept for callers that imported the old accent; it now resolves to the off-white ink. */

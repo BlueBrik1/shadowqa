@@ -75,10 +75,30 @@ def _matches(doc: dict, flt: dict | None) -> bool:
     return True
 
 
+class LocalId:
+    """Opaque document id. Like Mongo's ObjectId it is not JSON-serialisable, so code that
+    returns raw documents fails the same way against either store."""
+
+    __slots__ = ("value",)
+
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __repr__(self) -> str:
+        return f"LocalId('{self.value}')"
+
+    def __eq__(self, other: object) -> bool:
+        return str(other) == self.value
+
+
 def _project(doc: dict, projection: dict | None) -> dict:
     if not projection:
-        out = dict(doc)
-        out.pop("_id", None)
+        out = json.loads(json.dumps(doc))
+        if "_id" in out:
+            out["_id"] = LocalId(out["_id"])
         return out
     include = [k for k, v in projection.items() if v and k != "_id"]
     if include:
@@ -86,14 +106,16 @@ def _project(doc: dict, projection: dict | None) -> dict:
         for key in include:
             value = _get_path(doc, key)
             if value is not None:
-                _set_path(out, key, value)
-        if projection.get("_id", 0) and "_id" in doc:
-            out["_id"] = doc["_id"]
+                _set_path(out, key, json.loads(json.dumps(value)))
+        if projection.get("_id", 1) and "_id" in doc:
+            out["_id"] = LocalId(doc["_id"])
         return out
     out = json.loads(json.dumps(doc))
     for key, keep in projection.items():
         if not keep:
             out.pop(key, None)
+    if "_id" in out:
+        out["_id"] = LocalId(out["_id"])
     return out
 
 
@@ -141,8 +163,8 @@ class LocalCollection:
         os.replace(tmp, self.path)
 
     def find(self, flt: dict | None = None, projection: dict | None = None) -> _Cursor:
-        docs = [_project(d, projection) for d in self._load() if _matches(d, flt)]
-        return _Cursor(json.loads(json.dumps(docs)))
+        # _project deep-copies, so callers can mutate results without touching the store.
+        return _Cursor([_project(d, projection) for d in self._load() if _matches(d, flt)])
 
     async def find_one(self, flt: dict | None = None, projection: dict | None = None, sort: list | None = None) -> dict | None:
         cursor = self.find(flt, projection)
@@ -158,6 +180,15 @@ class LocalCollection:
             self._load().append(copy)
             self._flush()
             return _InsertResult(copy["_id"])
+
+    async def insert_many(self, docs: list[dict]) -> None:
+        async with self._lock:
+            store = self._load()
+            for i, doc in enumerate(docs):
+                copy = json.loads(json.dumps(doc, default=str))
+                copy.setdefault("_id", f"{now_ms():x}{len(store) + i:x}")
+                store.append(copy)
+            self._flush()
 
     async def update_one(self, flt: dict, update: dict) -> None:
         async with self._lock:
@@ -208,21 +239,25 @@ if settings.mongo_url:
 
     client = AsyncIOMotorClient(settings.mongo_url)
     _db = client[settings.db_name]
-    incidents = _db.sqa_incidents
-    audit_log = _db.sqa_audit
-    memory_col = _db.sqa_memory
-    qa_runs = _db.sqa_qa_runs
-    llm_log = _db.sqa_llm_log
+
+    def collection(name: str):
+        return _db[name]
+
     STORE = f"mongodb:{settings.db_name}"
 else:
     client = _LocalClient()
     _dir = Path(settings.live_data_dir)
-    incidents = LocalCollection(_dir, "incidents")
-    audit_log = LocalCollection(_dir, "audit")
-    memory_col = LocalCollection(_dir, "memory")
-    qa_runs = LocalCollection(_dir, "qa_runs")
-    llm_log = LocalCollection(_dir, "llm_log")
+
+    def collection(name: str):
+        return LocalCollection(_dir, name)
+
     STORE = f"local:{_dir}"
+
+incidents = collection("sqa_incidents")
+audit_log = collection("sqa_audit")
+memory_col = collection("sqa_memory")
+qa_runs = collection("sqa_qa_runs")
+llm_log = collection("sqa_llm_log")
 
 
 async def audit(action: str, incident_id: str | None = None, actor: str = "system", **details) -> None:

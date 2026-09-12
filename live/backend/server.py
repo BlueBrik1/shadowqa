@@ -15,6 +15,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from starlette.middleware.cors import CORSMiddleware
 
 ROOT_DIR = Path(__file__).parent
@@ -39,6 +40,15 @@ app = FastAPI(title="ShadowQA Live" + (" + Lumen Supply Co. demo API" if DEMO el
 async def root():
     return {"service": "shadowqa-live", "demo": "lumen-supply-co" if DEMO else None, "store": STORE,
             "linked": settings.core_linked, "ok": True}
+
+
+SDK_BUNDLE = ROOT_DIR.parent / "extension" / "shadowqa.js"
+
+
+@app.get("/shadowqa.js", include_in_schema=False)
+async def sdk_bundle():
+    """The browser SDK, so `shadowqa live snippet` needs nothing but this process."""
+    return FileResponse(SDK_BUNDLE, media_type="application/javascript", headers={"Cache-Control": "no-cache"})
 
 
 if DEMO:

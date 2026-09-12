@@ -4,10 +4,12 @@ This setup implements the revisions in `doc.md`: a CLI and native IDE controls, 
 
 ShadowQA ships in two editions from one codebase:
 
-| Edition | Reads | Runs the code in | Setup |
-| --- | --- | --- | --- |
-| **Team** (`shadowqa`) | Slack + GitHub | OpenCode in network-disabled Docker | Parts 1–9 below |
+
+| Edition                                | Reads                               | Runs the code in                            | Setup                                  |
+| -------------------------------------- | ----------------------------------- | ------------------------------------------- | -------------------------------------- |
+| **Team** (`shadowqa`)                  | Slack + GitHub                      | OpenCode in network-disabled Docker         | Parts 1–9 below                        |
 | **Individual** (`shadowqa-individual`) | ChatGPT, Claude, Claude Code, Codex | OpenCode, Claude Code or Codex, your choice | [Part B](#part-b--shadowqa-individual) |
+
 
 Both use Gemini for planning, the same PostgreSQL schema, the same policy gates and the same
 independent verification. Their data is kept in separate tenants.
@@ -88,37 +90,39 @@ Create a key in [Google AI Studio](https://aistudio.google.com/apikey). Use a pr
 
 Edit each project in `shadowqa.config.json`:
 
-| Setting | What to enter |
-| --- | --- |
-| `id` | Stable short project ID, e.g. `payments-ui`. Used in CLI commands. |
-| `name` | Human-readable display name. |
-| `audience` | `team` or `public`; project memberships define who may retrieve source context. |
-| `repository.id` | Stable internal repository ID. |
-| `repository.githubId` | Numeric GitHub repository ID, not the name. Read it from the GitHub repository API. |
-| `repository.owner`, `name` | Exact GitHub owner and repository name. |
-| `repository.installationId` | Numeric GitHub App installation ID. |
-| `repository.defaultBranch` | Usually `main`; must match GitHub. |
-| `repository.visibility` | Actual `private` or `public`; changes block publication until reconfigured. |
-| `repository.localPath` | Absolute path to the clone the **service** uses for read-only planning inspection. |
-| `channels` | Explicit Slack channel IDs with their private/public status. Each channel maps to one project. |
-| `profile.checks` | Check IDs and executable argument arrays, such as `["npm", "test"]`. No shell strings. |
-| `profile.install` | Optional offline setup commands. Network access is disabled during execution. |
-| `profile.requiredChecks` | IDs that must exist in `checks` and pass independently. |
-| `profile.allowedPaths` | Approved exact files or directory prefixes ending in `/`. No glob syntax. |
-| `profile.protectedPaths` | Never publish changes here automatically. Protect CI, dependencies, secrets and sensitive areas. |
-| `profile.autoPaths` | Smaller subset eligible for automatic repair; documentation is the initial default. |
-| `profile.image` | Reviewed image; build the default with `npm run sandbox:build`. |
-| `profile.reviewed` | Set `true` after reviewing repository scripts, commands, toolchain and isolation. |
-| `profile.externalInferenceApproved` | Set `true` after approving the project data for Gemini inference. |
-| `profile.maxFiles`, `maxLines` | Hard patch-size publication limits. |
-| `profile.timeoutSeconds`, `memoryMb`, `cpus` | Runner/container limits. |
-| `profile.scanIntervalMinutes` | Standing broader-scan interval, default 1440 minutes. |
-| `policy.mode` | Begin with `observe` or `approval`. |
-| `policy.dailyJobCap`, `repairAttempts`, `cooldownMinutes` | Repair budget; no more than two attempts. |
-| `policy.publishSummary` | A fixed summary safe to publish to the target repository audience. No private source excerpts. |
-| `policy.summaryApproved` | Set `true` after an administrator approves that publication text. |
-| `policy.autoMerge` | Explicit opt-in; defaults to `false`. |
-| `policy.requiredGithubChecks` | Required CI context names for an exact-head automatic merge. |
+
+| Setting                                                   | What to enter                                                                                    |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `id`                                                      | Stable short project ID, e.g. `payments-ui`. Used in CLI commands.                               |
+| `name`                                                    | Human-readable display name.                                                                     |
+| `audience`                                                | `team` or `public`; project memberships define who may retrieve source context.                  |
+| `repository.id`                                           | Stable internal repository ID.                                                                   |
+| `repository.githubId`                                     | Numeric GitHub repository ID, not the name. Read it from the GitHub repository API.              |
+| `repository.owner`, `name`                                | Exact GitHub owner and repository name.                                                          |
+| `repository.installationId`                               | Numeric GitHub App installation ID.                                                              |
+| `repository.defaultBranch`                                | Usually `main`; must match GitHub.                                                               |
+| `repository.visibility`                                   | Actual `private` or `public`; changes block publication until reconfigured.                      |
+| `repository.localPath`                                    | Absolute path to the clone the **service** uses for read-only planning inspection.               |
+| `channels`                                                | Explicit Slack channel IDs with their private/public status. Each channel maps to one project.   |
+| `profile.checks`                                          | Check IDs and executable argument arrays, such as `["npm", "test"]`. No shell strings.           |
+| `profile.install`                                         | Optional offline setup commands. Network access is disabled during execution.                    |
+| `profile.requiredChecks`                                  | IDs that must exist in `checks` and pass independently.                                          |
+| `profile.allowedPaths`                                    | Approved exact files or directory prefixes ending in `/`. No glob syntax.                        |
+| `profile.protectedPaths`                                  | Never publish changes here automatically. Protect CI, dependencies, secrets and sensitive areas. |
+| `profile.autoPaths`                                       | Smaller subset eligible for automatic repair; documentation is the initial default.              |
+| `profile.image`                                           | Reviewed image; build the default with `npm run sandbox:build`.                                  |
+| `profile.reviewed`                                        | Set `true` after reviewing repository scripts, commands, toolchain and isolation.                |
+| `profile.externalInferenceApproved`                       | Set `true` after approving the project data for Gemini inference.                                |
+| `profile.maxFiles`, `maxLines`                            | Hard patch-size publication limits.                                                              |
+| `profile.timeoutSeconds`, `memoryMb`, `cpus`              | Runner/container limits.                                                                         |
+| `profile.scanIntervalMinutes`                             | Standing broader-scan interval, default 1440 minutes.                                            |
+| `policy.mode`                                             | Begin with `observe` or `approval`.                                                              |
+| `policy.dailyJobCap`, `repairAttempts`, `cooldownMinutes` | Repair budget; no more than two attempts.                                                        |
+| `policy.publishSummary`                                   | A fixed summary safe to publish to the target repository audience. No private source excerpts.   |
+| `policy.summaryApproved`                                  | Set `true` after an administrator approves that publication text.                                |
+| `policy.autoMerge`                                        | Explicit opt-in; defaults to `false`.                                                            |
+| `policy.requiredGithubChecks`                             | Required CI context names for an exact-head automatic merge.                                     |
+
 
 The server increments policy versions when configuration changes and invalidates existing approvals. Re-import changes with `shadowqa project import`, and re-consent to changed runner profiles with `shadowqa runner map`.
 
@@ -149,14 +153,16 @@ For HTTP Events API instead, omit `SLACK_APP_TOKEN`, disable Socket Mode in the 
 
 Create a GitHub App in the organization/user account that owns your selected repositories. Install it only on those repositories. Configure these repository permissions:
 
-| Permission | Access |
-| --- | --- |
-| Metadata | Read |
-| Contents | Read/write for repair publication |
-| Pull requests | Read/write |
-| Issues | Read/write |
-| Checks | Read/write |
-| Actions | Read |
+
+| Permission    | Access                            |
+| ------------- | --------------------------------- |
+| Metadata      | Read                              |
+| Contents      | Read/write for repair publication |
+| Pull requests | Read/write                        |
+| Issues        | Read/write                        |
+| Checks        | Read/write                        |
+| Actions       | Read                              |
+
 
 No administration or workflow-edit permission is requested. If repository rule visibility is unavailable under those permissions, full-auto merge waits; do not grant broad privileges just to bypass that result.
 
@@ -296,21 +302,23 @@ Only saved files are copied. Checks run after 8 seconds of inactivity in separat
 
 ## Troubleshooting and operations
 
-| Symptom | Action |
-| --- | --- |
-| No runner / queued jobs | Keep `shadowqa runner start` running; a sleeping machine cannot execute jobs. Check `status`. |
-| Docker unavailable | Start Docker Desktop with Linux containers, then `npm run test:sandbox`. |
-| Profile changed | Review/import project settings, re-run `runner map`, then compile a new plan. |
-| Dirty clone | Commit or stash intentionally; ShadowQA does not change your uncommitted files. |
-| Missing/stale SHA | Fetch the configured remote branch in service and runner clones, then compile/scan again. |
-| `quota_paused` | Wait for provider quota recovery or the next configured budget day, then explicitly compile again. No automatic billing/fallback occurs. |
-| Inference disabled | Set `profile.externalInferenceApproved` after checking the data policy, import config. |
-| PR publication blocked | Read `shadowqa queue` and job logs. Check summary approval, scopes, tests, patch paths and current base. |
-| Quarantined runner | Run `runner quarantine-clean JOB_ID` on the old device, inspect retained workspaces, cancel the old job and compile a fresh plan. Never blindly resume a second executor. |
-| Tests fail on baseline | Findings distinguish environment, pre-existing and reproduced failures. A failed process never becomes a passing artifact because an agent said so. |
-| Slack/GitHub history gap | Check bot membership, app permissions and API rate limits; sync is bounded and may require a narrower channel/repository setup. |
-| Automatic merge waits | Required human reviews/rules, stale SHA, failing/pending checks or unavailable rule visibility are authoritative. Merge manually in GitHub if appropriate. |
-| Token revoked | Obtain a new administrator-issued membership/device token and log in; old jobs remain fenced. |
+
+| Symptom                  | Action                                                                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No runner / queued jobs  | Keep `shadowqa runner start` running; a sleeping machine cannot execute jobs. Check `status`.                                                                             |
+| Docker unavailable       | Start Docker Desktop with Linux containers, then `npm run test:sandbox`.                                                                                                  |
+| Profile changed          | Review/import project settings, re-run `runner map`, then compile a new plan.                                                                                             |
+| Dirty clone              | Commit or stash intentionally; ShadowQA does not change your uncommitted files.                                                                                           |
+| Missing/stale SHA        | Fetch the configured remote branch in service and runner clones, then compile/scan again.                                                                                 |
+| `quota_paused`           | Wait for provider quota recovery or the next configured budget day, then explicitly compile again. No automatic billing/fallback occurs.                                  |
+| Inference disabled       | Set `profile.externalInferenceApproved` after checking the data policy, import config.                                                                                    |
+| PR publication blocked   | Read `shadowqa queue` and job logs. Check summary approval, scopes, tests, patch paths and current base.                                                                  |
+| Quarantined runner       | Run `runner quarantine-clean JOB_ID` on the old device, inspect retained workspaces, cancel the old job and compile a fresh plan. Never blindly resume a second executor. |
+| Tests fail on baseline   | Findings distinguish environment, pre-existing and reproduced failures. A failed process never becomes a passing artifact because an agent said so.                       |
+| Slack/GitHub history gap | Check bot membership, app permissions and API rate limits; sync is bounded and may require a narrower channel/repository setup.                                           |
+| Automatic merge waits    | Required human reviews/rules, stale SHA, failing/pending checks or unavailable rule visibility are authoritative. Merge manually in GitHub if appropriate.                |
+| Token revoked            | Obtain a new administrator-issued membership/device token and log in; old jobs remain fenced.                                                                             |
+
 
 Useful commands: `shadowqa logs JOB_ID`, `shadowqa queue`, `shadowqa queue --retry`, `shadowqa audit`, `shadowqa prune`, `shadowqa pause`, `shadowqa resume`.
 
@@ -319,6 +327,8 @@ Back up PostgreSQL with encrypted, access-controlled backups and test a restore 
 The local pilot needs only the existing machine, PostgreSQL/Docker, Slack/GitHub Apps and available Gemini free quota. Always-on compute, HTTPS ingress, storage, backup and maintenance remain your deployment responsibilities.
 
 ---
+
+
 
 # Part B — ShadowQA Individual
 
@@ -330,7 +340,7 @@ the AI conversations you already have and runs the work through the coding CLI y
 
 - Node.js 22.16+ (24 recommended) and Git.
 - A Gemini API key ([Google AI Studio](https://aistudio.google.com/apikey)). Planning and extraction
-  require it; without one they refuse with the reason rather than showing invented output.
+require it; without one they refuse with the reason rather than showing invented output.
 - At least one coding CLI on your PATH:
   - `npm i -g opencode-ai@1.15.10` — uses your Gemini key, no coding subscription needed
   - `npm i -g @anthropic-ai/claude-code` then `claude` once to sign in
@@ -354,12 +364,14 @@ npm link          # puts shadowqa-individual on your PATH
 shadowqa-individual setup
 ```
 
-| Step | What it does |
-| --- | --- |
-| 1 · Claude | Detects the Claude Code CLI and its local transcripts (`~/.claude/projects`, or `CLAUDE_CONFIG_DIR`). Optionally installs `SessionStart` / `Stop` / `SessionEnd` hooks. Claude Code will ask you to review changed hooks in `/hooks` before they run. |
-| 2 · OpenAI | Detects the Codex CLI and its rollouts (`~/.codex/sessions`, or `CODEX_HOME`). States plainly that Codex threads never written to this machine are not visible. |
-| 3 · Extension | Prints the load-unpacked instructions, takes your extension ID, and registers the native messaging host for Chrome, Edge and Chromium. |
-| 4 · Mode | Takes your Gemini key, then the automation mode and the execution backend, then the project ID, repository folder and check command. |
+
+| Step          | What it does                                                                                                                                                                                                                                          |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 · Claude    | Detects the Claude Code CLI and its local transcripts (`~/.claude/projects`, or `CLAUDE_CONFIG_DIR`). Optionally installs `SessionStart` / `Stop` / `SessionEnd` hooks. Claude Code will ask you to review changed hooks in `/hooks` before they run. |
+| 2 · OpenAI    | Detects the Codex CLI and its rollouts (`~/.codex/sessions`, or `CODEX_HOME`). States plainly that Codex threads never written to this machine are not visible.                                                                                       |
+| 3 · Extension | Prints the load-unpacked instructions, takes your extension ID, and registers the native messaging host for Chrome, Edge and Chromium.                                                                                                                |
+| 4 · Mode      | Takes your Gemini key, then the automation mode and the execution backend, then the project ID, repository folder and check command.                                                                                                                  |
+
 
 Settings are written to `~/.shadowqa-individual/individual.env` with mode `0600`. Nothing is written
 into your repository. Repeat one step with
@@ -371,7 +383,7 @@ into your repository. Repeat one step with
 2. **Load unpacked** → select `individual/extension/dist`
 3. Copy the extension ID from its card
 4. `shadowqa-individual companion install <extension-id>` (setup does this for you if you gave it
-   the ID) — then **reload the extension** so Chrome picks up the host
+  the ID) — then **reload the extension** so Chrome picks up the host
 5. Start the service, then pair:
 
 ```powershell
@@ -406,6 +418,8 @@ Then confirm what is being watched:
 shadowqa-individual status
 ```
 
+
+
 ## B5. The loop
 
 ```powershell
@@ -432,6 +446,8 @@ shadowqa-individual findings
 shadowqa-individual repair FINDING_ID
 ```
 
+
+
 ## B6. What it does to your repository
 
 The agent works in a copy exported from Git objects at the plan's base commit, so your clone —
@@ -441,18 +457,20 @@ change, no stash, and `HEAD` does not move. Delete the branch to discard it.
 
 ## B7. Troubleshooting
 
-| Symptom | Action |
-| --- | --- |
-| Panel says *Companion not installed* | `shadowqa-individual companion install <extension-id>`, then reload the extension in `chrome://extensions`. |
-| Panel says *registered for a different extension ID* | The ID changes if you move the unpacked folder. Re-run `companion install` with the new ID. |
-| Panel says *ShadowQA Individual is not running* | Start `shadowqa-individual serve`. |
-| Pairing code rejected | Codes are one-use and expire in ten minutes. Run `pair` again. |
-| *No model is configured* | Set `GEMINI_API_KEY`. ShadowQA refuses to plan rather than invent one. |
-| Task stuck at `waiting_for_runner` | The chosen backend is not installed or not signed in. `shadowqa-individual doctor` names it. |
-| Backend ran but nothing changed | Read `shadowqa-individual task <id>`. OpenCode and Codex exit zero on some failures; ShadowQA reads their events and shows the real reason. |
-| `The 'gpt-…' model requires a newer version of Codex` | Upgrade the Codex CLI; the adapter reports the CLI's own message. |
-| No turns captured | The site's markup may have changed. The panel shows a warning instead of pretending the conversation is empty; open an issue with the site and date. |
-| Want it all gone | `shadowqa-individual companion uninstall` removes the host and the Claude Code hooks; delete `~/.shadowqa-individual` to remove the database, tokens and workspaces. |
+
+| Symptom                                               | Action                                                                                                                                                               |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Panel says *Companion not installed*                  | `shadowqa-individual companion install <extension-id>`, then reload the extension in `chrome://extensions`.                                                          |
+| Panel says *registered for a different extension ID*  | The ID changes if you move the unpacked folder. Re-run `companion install` with the new ID.                                                                          |
+| Panel says *ShadowQA Individual is not running*       | Start `shadowqa-individual serve`.                                                                                                                                   |
+| Pairing code rejected                                 | Codes are one-use and expire in ten minutes. Run `pair` again.                                                                                                       |
+| *No model is configured*                              | Set `GEMINI_API_KEY`. ShadowQA refuses to plan rather than invent one.                                                                                               |
+| Task stuck at `waiting_for_runner`                    | The chosen backend is not installed or not signed in. `shadowqa-individual doctor` names it.                                                                         |
+| Backend ran but nothing changed                       | Read `shadowqa-individual task <id>`. OpenCode and Codex exit zero on some failures; ShadowQA reads their events and shows the real reason.                          |
+| `The 'gpt-…' model requires a newer version of Codex` | Upgrade the Codex CLI; the adapter reports the CLI's own message.                                                                                                    |
+| No turns captured                                     | The site's markup may have changed. The panel shows a warning instead of pretending the conversation is empty; open an issue with the site and date.                 |
+| Want it all gone                                      | `shadowqa-individual companion uninstall` removes the host and the Claude Code hooks; delete `~/.shadowqa-individual` to remove the database, tokens and workspaces. |
+
 
 ```powershell
 shadowqa-individual doctor

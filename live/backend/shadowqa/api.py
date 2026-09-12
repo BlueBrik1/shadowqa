@@ -136,6 +136,7 @@ async def dismiss(incident_id: str, x_shadowqa_token: str | None = Header(defaul
     require_token(x_shadowqa_token)
     await update_incident(incident_id, {"status": "dismissed"})
     await audit("developer.dismissed", incident_id, actor="developer")
+    await core_link.report(await get_incident(incident_id))
     return {"ok": True}
 
 

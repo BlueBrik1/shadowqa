@@ -6,6 +6,7 @@ import { AppError, authorize } from "../core/security.js";
 import { Planner } from "../planner/planner.js";
 import { Scheduler } from "../scheduler/jobs.js";
 import { canAuto } from "../policy/engine.js";
+import { enqueueAction, isLiveFinding } from "../live/bridge.js";
 /** Only explicit CLI repair or a preauthorized standing QA policy enters this path. */
 export async function repairFinding(
   db: Database,
@@ -14,6 +15,38 @@ export async function repairFinding(
   id: string,
   automatic = false,
 ) {
+  // A Live finding already carries a diagnosed, risk-scored patch. Repairing it means letting
+  // Live apply, validate and replay-verify that patch under the project mode — not compiling a
+  // second plan for the same failure.
+  const existing = await db.get<Finding>(actor.tenant, "finding", id);
+  if (isLiveFinding(existing)) {
+    authorize(actor, existing.projectId, ["admin", "developer"]);
+    const p = await db.project(actor.tenant, existing.projectId);
+    if (p.policy.mode === "observe")
+      throw new AppError(
+        "OBSERVE",
+        "Project is in observe mode; Live may diagnose but not edit. Change the mode first.",
+      );
+    if (existing.live.status !== "diagnosed")
+      throw new AppError(
+        "LIVE_STATE",
+        `Live incident is ${existing.live.status}; only a diagnosed incident can be applied`,
+      );
+    const action = await enqueueAction(db, actor, existing.projectId, id, "approve");
+    await db.put(
+      actor.tenant,
+      "finding",
+      id,
+      { ...existing, repairAttempts: existing.repairAttempts + 1, lastRepair: action.createdAt },
+      existing.projectId,
+    );
+    return {
+      kind: "live",
+      action,
+      incident: existing.live,
+      message: "Handed to ShadowQA Live: apply → validate → replay → verify (or roll back).",
+    };
+  }
   const finding = await db.tx(async (tx) => {
     const row = await tx.one(
       "SELECT data FROM entities WHERE tenant=$1 AND kind='finding' AND id=$2 FOR UPDATE",

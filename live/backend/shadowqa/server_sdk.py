@@ -17,7 +17,7 @@ def _handler_location(endpoint, root: Path) -> dict | None:
     try:
         file = Path(inspect.getsourcefile(fn) or "").resolve()
         line = inspect.getsourcelines(fn)[1]
-        rel = str(file.relative_to(root))
+        rel = file.relative_to(root).as_posix()
     except (TypeError, OSError, ValueError):
         return None
     return {"function": getattr(fn, "__name__", "handler"), "file": rel, "line": line}
@@ -27,7 +27,7 @@ def _app_frames(exc: BaseException, root: Path) -> list[dict]:
     frames: list[dict] = []
     for fr in traceback.extract_tb(exc.__traceback__):
         try:
-            rel = str(Path(fr.filename).resolve().relative_to(root))
+            rel = Path(fr.filename).resolve().relative_to(root).as_posix()
         except ValueError:
             continue
         if "/shadowqa/" in f"/{rel}":

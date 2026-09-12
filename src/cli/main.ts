@@ -11,8 +11,9 @@ import { fileURLToPath } from "node:url";
 import { Database } from "../db/database.js";
 import { environment, loadConfig } from "../core/config.js";
 import { hash, token, AppError, sanitize } from "../core/security.js";
-import { Client, credentialKey } from "./client.js";
-import { banner, line, success, failure, table, renderPlan } from "./ui.js";
+import { Client, credential, credentialKey } from "./client.js";
+import { GLYPH, banner, line, success, failure, table, renderPlan, soft, good, bad } from "./ui.js";
+import { registerLiveCommands } from "./live.js";
 import { setup, STEPS, watchingSummary, type Step } from "./setup.js";
 import { createServer } from "../api/server.js";
 import { Worker } from "../api/worker.js";
@@ -400,7 +401,26 @@ cli.command("logs <job>").action(async (id) => {
 });
 cli
   .command("findings")
-  .action(async () => output(await client().call("/findings")));
+  .description("Open findings: failed checks from scans and runtime incidents from Live")
+  .action(async () => {
+    const findings = await client().call<any[]>("/findings");
+    if (cli.opts().json) return output(findings);
+    if (!findings.length) return line("EMPTY", "No findings. ShadowQA is watching.");
+    table(
+      findings.map((f) => ({
+        "": f.detector === "live" ? soft(GLYPH.live) : soft(GLYPH.step),
+        id: f.id,
+        project: f.projectId,
+        rule: f.rule,
+        state: f.state === "resolved" ? good(f.state) : f.classification === "repair-failed" ? bad(f.state) : f.state,
+        classification: f.classification,
+        seen: f.occurrences,
+      })),
+      ["", "id", "project", "rule", "state", "classification", "seen"],
+    );
+    console.log();
+    line(GLYPH.live, "runtime incident from ShadowQA Live · " + GLYPH.step + " check failure from a scan");
+  });
 cli
   .command("suppress <finding>")
   .requiredOption("--reason <text>", "Audited reason")
@@ -419,10 +439,26 @@ cli
     "Compile a scoped repair plan with lineage, cooldown and attempt caps",
   )
   .action(async (id) => {
-    const p = await client().call<Plan>(`/findings/${id}/repair`, "POST", {});
-    if (cli.opts().json) output(p);
-    else renderPlan(p);
+    const p = await client().call<any>(`/findings/${id}/repair`, "POST", {});
+    if (cli.opts().json) return output(p);
+    if (p.kind === "live") {
+      success(p.message);
+      line("INCIDENT", p.incident.incidentId);
+      if (p.incident.rootCause) line("ROOT CAUSE", p.incident.rootCause);
+      if (p.incident.files?.length) line("PATCH", `${p.incident.files.join(", ")} (${p.incident.risk} risk)`);
+      line("WATCH", `shadowqa live incident ${p.incident.incidentId}`);
+      return;
+    }
+    renderPlan(p as Plan);
   });
+registerLiveCommands(cli, {
+  json: () => !!cli.opts().json,
+  output,
+  link: async () => ({ url: client().url, token: await credential(client().url) }),
+  serviceIncidents: (project) => client().call(`/live/projects/${project}/incidents`),
+  serviceAction: (project, incidentId, kind) =>
+    client().call(`/live/projects/${project}/actions`, "POST", { incidentId, kind }),
+});
 cli
   .command("scan <project>")
   .description("Queue independent checks at the configured base SHA")
@@ -661,8 +697,17 @@ cli
       dbAction((db) => db.rows("SELECT 1")),
     );
     await check("Service/auth", () => client().call("/me"));
-    await check("Gemini key", async () => {
+    await check("Gemini key (planning)", async () => {
       if (!process.env.GEMINI_API_KEY) throw new Error("Set GEMINI_API_KEY");
+    });
+    await check("Live diagnosis key (Anthropic / OpenAI)", async () => {
+      if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY && !process.env.EMERGENT_LLM_KEY)
+        throw new Error("Set ANTHROPIC_API_KEY or OPENAI_API_KEY for shadowqa live");
+    });
+    await check("Python 3 (Live bridge)", async () => {
+      const py = process.platform === "win32" ? "py" : "python3";
+      const r = await run(py, ["--version"]);
+      if (r.code !== 0) throw new Error("Install Python 3.11+ for shadowqa live");
     });
     await check("OpenCode CLI", async () => {
       const r = await run(await opencodeExecutable(), ["--version"]);
@@ -706,10 +751,18 @@ cli
       table(status.projects, ["id", "name", "mode"]);
       line("CONTEXT", `${status.sources} source documents`);
       console.log(
-        "\n  1  Compile context, generate plan\n  2  Review / approve plans\n  3  Jobs and sessions\n  4  Findings\n  5  Change automation mode\n  6  Pause all work\n  7  What ShadowQA is watching\n  8  Connections (Slack, GitHub, mode)\n  0  Exit\n",
+        "\n  1  Compile context, generate plan\n  2  Review / approve plans\n  3  Jobs and sessions\n  4  Findings\n  5  Change automation mode\n  6  Pause all work\n  7  What ShadowQA is watching\n  8  Connections (Slack, GitHub, mode)\n  9  " +
+          GLYPH.live +
+          " Live runtime incidents\n  0  Exit\n",
       );
       const choice = await ask("Choose →");
       if (choice === "0") break;
+      if (choice === "9") {
+        const { LiveClient, renderIncidents, renderIncident } = await import("./live.js");
+        renderIncidents(await new LiveClient().call("/incidents?limit=20"));
+        const id = await ask("Incident ID to inspect (Enter to return):");
+        if (id) renderIncident(await new LiveClient().call(`/incidents/${id}`));
+      }
       if (choice === "1") {
         const id = await ask("Project ID:"),
           objective = await ask("Objective (Enter uses confirmed context):");

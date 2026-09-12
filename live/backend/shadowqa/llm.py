@@ -1,8 +1,10 @@
 """LLM client with provider fallback and strict JSON extraction.
 
-Live diagnoses with Anthropic (Claude) first and OpenAI (GPT) as the fallback, through the
-``emergentintegrations`` chat client. Gemini — the ShadowQA service's planning provider — is an
-optional third provider, called directly over HTTPS, used only when a ``GEMINI_API_KEY`` is set.
+Live diagnoses with Anthropic (Claude) first and OpenAI (GPT) as the fallback. With
+``ANTHROPIC_API_KEY`` / ``OPENAI_API_KEY`` set the providers are called directly over HTTPS; with
+only an ``EMERGENT_LLM_KEY`` the ``emergentintegrations`` chat client is used instead. Gemini — the
+ShadowQA service's planning provider — is an optional third provider, used only when a
+``GEMINI_API_KEY`` is set.
 """
 import json
 import re
@@ -107,9 +109,10 @@ class _GeminiChat:
             "generationConfig": {"temperature": 0.1, "maxOutputTokens": self.max_tokens, "responseMimeType": "application/json"},
         }
         async with httpx.AsyncClient(timeout=120) as http:
+            # Key in a header, never in the URL: httpx error messages include the URL and land in the audit log.
             response = await http.post(
                 GEMINI_ENDPOINT.format(model=self.model),
-                params={"key": settings.gemini_key},
+                headers={"x-goog-api-key": settings.gemini_key},
                 json=body,
             )
         if response.status_code == 429:
@@ -121,6 +124,60 @@ class _GeminiChat:
         if not answer:
             raise LLMUnavailable(f"Gemini returned no text ({(data.get('promptFeedback') or {}).get('blockReason', 'empty')})")
         self.history.append({"role": "model", "parts": [{"text": answer}]})
+        return answer
+
+
+class _AnthropicChat:
+    """Anthropic Messages API, multi-turn, called with the developer's own key."""
+
+    def __init__(self, model: str, system: str, max_tokens: int) -> None:
+        self.model, self.system, self.max_tokens = model, system, max_tokens
+        self.history: list[dict] = []
+
+    async def send_message(self, text: str) -> str:
+        self.history.append({"role": "user", "content": text})
+        async with httpx.AsyncClient(timeout=180) as http:
+            response = await http.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": settings.anthropic_key, "anthropic-version": "2023-06-01"},
+                json={"model": self.model, "system": self.system, "messages": self.history,
+                      "max_tokens": self.max_tokens, "temperature": 0.1},
+            )
+        if response.status_code == 429:
+            raise LLMUnavailable("Anthropic rate limit reached; falling back")
+        response.raise_for_status()
+        answer = "".join(b.get("text", "") for b in response.json().get("content", []) if b.get("type") == "text")
+        if not answer:
+            raise LLMUnavailable("Anthropic returned no text")
+        self.history.append({"role": "assistant", "content": answer})
+        return answer
+
+
+class _OpenAIChat:
+    """OpenAI Chat Completions, multi-turn, JSON mode, called with the developer's own key."""
+
+    def __init__(self, model: str, system: str, max_tokens: int) -> None:
+        self.model, self.max_tokens = model, max_tokens
+        self.history: list[dict] = [{"role": "system", "content": system}]
+
+    async def send_message(self, text: str) -> str:
+        self.history.append({"role": "user", "content": text})
+        body: dict = {"model": self.model, "messages": self.history, "response_format": {"type": "json_object"}}
+        if self.model.startswith(("gpt-5", "o")):
+            body["max_completion_tokens"] = self.max_tokens  # reasoning models: default temperature only
+        else:
+            body["max_tokens"] = self.max_tokens
+            body["temperature"] = 0.1
+        async with httpx.AsyncClient(timeout=180) as http:
+            response = await http.post("https://api.openai.com/v1/chat/completions",
+                                       headers={"Authorization": f"Bearer {settings.openai_key}"}, json=body)
+        if response.status_code == 429:
+            raise LLMUnavailable("OpenAI rate limit reached; falling back")
+        response.raise_for_status()
+        answer = ((response.json().get("choices") or [{}])[0].get("message") or {}).get("content") or ""
+        if not answer:
+            raise LLMUnavailable("OpenAI returned no text")
+        self.history.append({"role": "assistant", "content": answer})
         return answer
 
 
@@ -142,6 +199,10 @@ class _EmergentChat:
 def _session(provider: str, model: str, system: str, max_tokens: int):
     if provider == "gemini":
         return _GeminiChat(model, system, max_tokens)
+    if provider == "anthropic" and settings.anthropic_key:
+        return _AnthropicChat(model, system, max_tokens)
+    if provider == "openai" and settings.openai_key:
+        return _OpenAIChat(model, system, max_tokens)
     return _EmergentChat(provider, model, system, max_tokens)
 
 

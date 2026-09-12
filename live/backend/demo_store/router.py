@@ -1,24 +1,23 @@
 import hashlib
-import os
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Header, HTTPException
-from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr, Field
+
+from shadowqa.db import collection
 
 from .catalog import FAQ, PRODUCTS, SEED_ORDERS
 
 router = APIRouter(prefix="/api/demo", tags=["demo-store"])
 
-_client = AsyncIOMotorClient(os.environ["MONGO_URL"])
-_db = _client[os.environ["DB_NAME"]]
-sessions = _db.demo_sessions
-orders = _db.demo_orders
-settings_col = _db.demo_settings
-accounts = _db.demo_accounts
-tickets = _db.demo_tickets
+# Same store as ShadowQA Live itself: MongoDB when MONGO_URL is set, local JSON files otherwise.
+sessions = collection("demo_sessions")
+orders = collection("demo_orders")
+settings_col = collection("demo_settings")
+accounts = collection("demo_accounts")
+tickets = collection("demo_tickets")
 
 DEMO_PASSWORD = "lumen-demo"
 
