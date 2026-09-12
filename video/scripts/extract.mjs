@@ -17,7 +17,7 @@ const out = path.resolve(here, "..", "src", "generated");
  * lang     Prism language id
  */
 const snippets = [
-    {
+  {
     key: "brand",
     file: "src/cli/ui.ts",
     anchor: /^export const BRAND/,

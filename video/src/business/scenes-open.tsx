@@ -18,7 +18,7 @@ import { ShadowMark, SlackMark, GitHubMark } from "../components/Marks";
 import { CodeCard } from "../components/Code";
 import { Panel, Pill } from "../components/Surfaces";
 import { snippet } from "../generated/source";
-import { c, clamp, easeOut, enter, POP } from "../theme";
+import { BRAND, c, clamp, easeOut, enter, POP } from "../theme";
 import { code as mono } from "../fonts";
 import * as data from "./data";
 
@@ -89,14 +89,23 @@ export const Open: React.FC<{ duration: number }> = ({ duration }) => {
                 width: 34,
                 height: 34,
                 borderRadius: 10,
-                background: c.cyan,
+                background: BRAND.charcoal,
+                border: `1px solid ${c.stroke}`,
+              }}
+            />
+            <span
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                background: BRAND.offwhite,
                 boxShadow: `0 0 30px ${c.cyan}88`,
               }}
             />
             <span style={{ fontFamily: mono, fontSize: 15, color: c.dim }}>
               <span style={{ color: c.faint }}>src/cli/ui.ts</span>
               <br />
-              chalk.hex("#73e3d3")
+              BRAND = &#123; {BRAND.charcoal}, {BRAND.offwhite} &#125;
             </span>
           </div>
         </Panel>

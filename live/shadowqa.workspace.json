@@ -1,6 +1,6 @@
 {
   "name": "Lumen Supply Co.",
-  "root": "/app",
+  "root": ".",
   "frontend_dir": "frontend",
   "backend_dir": "backend",
   "read_roots": [

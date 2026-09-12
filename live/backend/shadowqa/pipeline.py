@@ -5,7 +5,7 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from . import correlation, git_ops, memory, orchestrator, risk, server_sdk
+from . import core_link, correlation, git_ops, memory, orchestrator, risk, server_sdk
 from .config import settings
 from .db import audit, get_incident, incidents, now_iso, now_ms, update_incident
 from .llm import LLMUnavailable
@@ -45,6 +45,7 @@ async def ingest(payload: dict) -> dict:
     corr = correlation.build(payload, frames, server_error_for=server_sdk.match)
     await _supersede_stale(ws)
     detected = (payload.get("timing") or {}).get("detected_at") or failure.get("ts") or now_ms()
+    policy = await core_link.policy()
     incident = {
         "id": uuid.uuid4().hex[:12],
         "created_at": now_iso(),
@@ -59,7 +60,7 @@ async def ingest(payload: dict) -> dict:
         "network": payload.get("network", [])[-20:],
         "dom": payload.get("dom") or {},
         "state": payload.get("state"),
-        "policy": {"autonomy": settings.autonomy},
+        "policy": {"autonomy": policy["autonomy"], "mode": policy.get("mode"), "source": policy.get("source")},
         "telemetry": {"detection_ms": max(0, int(failure.get("ts", detected)) - int(failure.get("ts", detected))),
                       "capture_to_bridge_ms": max(0, now_ms() - int(detected)),
                       "correlation_ms": int((time.time() - t0) * 1000),
@@ -72,6 +73,7 @@ async def ingest(payload: dict) -> dict:
     await incidents.insert_one(dict(incident))
     await audit("incident.captured", incident["id"], actor="sdk", title=incident["title"], route=incident["app"].get("route"),
                 fingerprint=incident["fingerprint"], source=incident["source"])
+    asyncio.create_task(core_link.report(incident))
     asyncio.create_task(run_diagnosis(incident["id"]))
     return incident
 
@@ -147,17 +149,29 @@ async def run_diagnosis(incident_id: str) -> None:
     await update_incident(incident_id, fields)
     await audit("diagnosis.completed", incident_id, status=fields["status"], confidence=diagnosis["confidence"],
                 risk=(fields.get("risk") or {}).get("level"), model=diagnosis["model"])
+    await core_link.report(await get_incident(incident_id))
 
-    # Autonomous application only for failures observed live with the developer present; QA-discovered failures queue for review.
-    if plan and settings.autonomy == "auto_low" and fields["risk"]["autonomous_eligible"] and inc.get("source") != "qa":
+    # The ShadowQA project's automation mode decides what happens next:
+    #   observe   → diagnosis is recorded, nothing is written
+    #   approval  → the patch waits for `shadowqa live approve` / the overlay's Apply
+    #   auto-fix  → LOW-risk, high-confidence patches apply on their own and are still replay-verified
+    # QA-discovered failures always queue for review; a developer was not present when they happened.
+    policy = await core_link.policy()
+    await update_incident(incident_id, {"policy": {"autonomy": policy["autonomy"], "mode": policy.get("mode"), "source": policy.get("source")}})
+    if plan and core_link.may_auto_apply(policy["autonomy"]) and fields["risk"]["autonomous_eligible"] and inc.get("source") != "qa":
         await update_incident(incident_id, {"policy.auto_applied": True})
-        await audit("policy.autonomous_apply", incident_id, risk="LOW", confidence=diagnosis["confidence"])
-        await run_apply(incident_id, actor="policy:auto_low")
+        await audit("policy.autonomous_apply", incident_id, risk="LOW", confidence=diagnosis["confidence"], mode=policy.get("mode"))
+        await run_apply(incident_id, actor=f"policy:{policy.get('mode') or policy['autonomy']}")
 
 
 async def run_apply(incident_id: str, actor: str = "developer") -> None:
     inc = await get_incident(incident_id)
     if not inc or not inc.get("patch") or inc.get("status") != "diagnosed":
+        return
+    policy = await core_link.policy()
+    if not core_link.may_write(policy["autonomy"]):
+        await audit("policy.write_blocked", incident_id, actor=actor, mode=policy.get("mode"), autonomy=policy["autonomy"])
+        await update_incident(incident_id, {"error": f"project mode '{policy.get('mode') or policy['autonomy']}' does not allow edits; change it with `shadowqa project mode`"})
         return
     ws = get_workspace()
     telemetry = dict(inc.get("telemetry") or {})
@@ -195,9 +209,11 @@ async def _validate_and_advance(incident_id: str, ws, files: list[str], checkpoi
         await update_incident(incident_id, {"status": "validation_failed", "rolled_back_at": now_iso(), "telemetry": telemetry,
                                             "error": "validation failed; workspace restored from checkpoint"})
         await audit("rollback.validation_failed", incident_id, actor="system")
+        await core_link.report(await get_incident(incident_id))
         return
     await update_incident(incident_id, {"status": "awaiting_replay", "validated_at": now_iso()})
     await audit("validation.passed", incident_id, steps=[s["name"] for s in validation["steps"]])
+    await core_link.report(await get_incident(incident_id))
 
 
 async def resume_interrupted() -> None:
@@ -246,7 +262,9 @@ async def record_replay(incident_id: str, result: dict) -> dict | None:
                                             "error": "replay did not confirm recovery; workspace restored from checkpoint"})
         await memory.record_fix(inc, verified=False)
         await audit("rollback.replay_failed", incident_id, actor="system")
-    return await get_incident(incident_id)
+    updated = await get_incident(incident_id)
+    await core_link.report(updated)
+    return updated
 
 
 async def rollback(incident_id: str, actor: str = "developer") -> dict | None:
@@ -260,7 +278,9 @@ async def rollback(incident_id: str, actor: str = "developer") -> dict | None:
         await update_incident(incident_id, {"status": "rolled_back", "rolled_back_at": now_iso(), "telemetry": telemetry})
         await memory.record_fix(inc, verified=False)
         await audit("rollback.manual", incident_id, actor=actor, files=[f["path"] for f in inc["checkpoint"]["files"]])
-    return await get_incident(incident_id)
+    updated = await get_incident(incident_id)
+    await core_link.report(updated)
+    return updated
 
 
 async def create_pr(incident_id: str) -> dict:
@@ -294,4 +314,35 @@ async def create_pr(incident_id: str) -> dict:
         git["pr_error"] = "GITHUB_REPO not configured — branch created locally; PR-ready summary attached"
     await update_incident(incident_id, {"git": git, "status": "committed"})
     await audit("git.branch_created", incident_id, branch=branch, commit=git.get("commit"), pr=(git.get("pr") or {}).get("url"))
+    await core_link.report(await get_incident(incident_id))
     return git
+
+
+async def poll_core_actions() -> None:
+    """Pick up `shadowqa live approve|undo|pr <incident>` requests made in the CLI while the service is linked."""
+    for action in await core_link.fetch_actions():
+        incident_id = action.get("incidentId")
+        kind = action.get("kind")
+        if not incident_id or not kind:
+            continue
+        await audit(f"cli.{kind}", incident_id, actor=action.get("actor", "cli"))
+        try:
+            if kind == "approve":
+                await run_apply(incident_id, actor=action.get("actor", "cli"))
+            elif kind == "undo":
+                await rollback(incident_id, actor=action.get("actor", "cli"))
+            elif kind == "pr":
+                await create_pr(incident_id)
+            elif kind == "dismiss":
+                await update_incident(incident_id, {"status": "dismissed"})
+                await core_link.report(await get_incident(incident_id))
+        except Exception as exc:  # one bad action must not stop the loop
+            log.warning("core action %s for %s failed: %s", kind, incident_id, exc)
+
+
+async def core_action_loop(interval: float = 3.0) -> None:
+    if not settings.core_linked:
+        return
+    while True:
+        await poll_core_actions()
+        await asyncio.sleep(interval)

@@ -1,28 +1,37 @@
 import { interpolate, spring } from "remotion";
 
 /**
- * The accent is not a design choice made here: `#73e3d3` is the exact colour the shipped CLI
- * prints with (`src/cli/ui.ts`), so the film and the product are the same brand by construction.
+ * The brand is not a design choice made here. `BRAND` in `src/cli/ui.ts` is what the shipped CLI
+ * prints with, what the side panel is painted in, and what the film uses for its ground, its ink
+ * and its accent — so the film and the product are the same brand by construction rather than by
+ * someone remembering to keep two palettes in step.
+ *
+ * `video/scripts/extract.mjs` quotes that same declaration on screen, and fails the build if it
+ * ever moves.
  */
+export const BRAND = { charcoal: "#1C1C1C", offwhite: "#F4F1EA" } as const;
+
 export const c = {
-  bg: "#06080B",
-  bgLift: "#0A0E14",
-  panel: "#0D1218",
-  panelLift: "#131A22",
-  stroke: "rgba(255,255,255,0.09)",
-  strokeStrong: "rgba(255,255,255,0.18)",
-  text: "#E9EEF4",
-  dim: "#78879A",
-  faint: "#4A5867",
-  cyan: "#73E3D3",
-  cyanDeep: "#2BB3A3",
+  // A shade under the product's charcoal, so panels painted in charcoal still lift off the ground.
+  bg: "#121212",
+  bgLift: "#181818",
+  panel: BRAND.charcoal,
+  panelLift: "#232323",
+  stroke: "rgba(244,241,234,0.10)",
+  strokeStrong: "rgba(244,241,234,0.20)",
+  text: BRAND.offwhite,
+  dim: "#A9A59D",
+  faint: "#6F6C66",
+  /** The accent is the product's ink; `cyan` is kept as the token name the scenes already use. */
+  cyan: BRAND.offwhite,
+  cyanDeep: "#A9A59D",
   violet: "#A78BFA",
   amber: "#FBBF24",
-  rose: "#FB7185",
-  green: "#57D9A3",
+  rose: "#E5484D",
+  green: "#3DD68C",
   blue: "#60A5FA",
   slack: "#E01E5A",
-  github: "#E9EEF4",
+  github: BRAND.offwhite,
   openai: "#10A37F",
   claude: "#D97757",
 } as const;

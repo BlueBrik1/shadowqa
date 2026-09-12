@@ -6,7 +6,7 @@ re-checked afterwards. Everything under **Accepted** is a real trade-off that is
 rather than quietly carried.
 
 Scope: `src/`, `individual/`, `video/`, the two rendered films, and the documents that describe
-them. Baseline: `npm run typecheck` clean, `npm test` 119 passing, `npm run demo` and
+them. Baseline: `npm run typecheck` clean under strict unused checks, `npm test` 130 passing in ≈25 s, `npm run demo` and
 `scripts/individual-demo.ts` both passing, both films rendering.
 
 ---
@@ -138,6 +138,64 @@ All aligned to the real strings, and both films re-rendered.
 
 **18. Animations that never arrived.** Three elements had reveal delays close enough to their
 scene's end to appear for under a second and a half. Retimed.
+
+---
+
+## Second pass — running the CLI as a user, and a static quality sweep
+
+The first pass reviewed and tested. This pass launched the product and drove every command, then
+put the whole repository through compiler-enforced quality checks.
+
+### Driven for real
+
+`shadowqa-individual serve` was started against a disposable home and a disposable clone, and every
+command in the CLI was run against it: `status`, `doctor`, `project list/add/mode/backend/repo`,
+`conversations`, `context`, `extract`, `items`, `confirm/reject/revise`, `plan`, `plans`, `show`,
+`approve`, `tasks`, `task`, `diff`, `open`, `cancel`, `pr`, `findings`, `scan`, `repair`,
+`sessions list/add/remove/sweep`, `pair`, `unpair` and `companion install/status/uninstall`.
+
+The complete path ran end to end through the shipped binary: capture → extract → plan → `approve` →
+**a real Claude Code session** → frozen diff → `node --test` → local branch. Afterwards the fixture
+repository's `HEAD` was unmoved, its working tree was clean, and `shadowqa/<task>` held the fix.
+Notably the agent itself reported *"the tests are unverified — my attempts to run them were blocked"*,
+and ShadowQA ran them anyway and recorded `exit 0`. That is the design working.
+
+| Bug | How it was found | Fix |
+| --- | --- | --- |
+| `cancel` on a **finished** task overwrote its state, so a verified `ready` task silently became `cancelled` and its result was lost from the record | Running `cancel` against a completed task | The route refuses any task in a terminal state with a 409 naming the state; only `queued`, `waiting_for_runner`, `preparing`, `running` and `verifying` can be cancelled. Covered by `tests/individual-api.test.ts`. |
+| Eleven commands printed raw JSON even without `--json`, so ordinary use looked like a debug dump | Driving every command | A `report()` helper prints one confirmed line by default and the full payload under `--json`. |
+| `items` on an empty project printed nothing at all | Driving every command | It now names the command that fills it. |
+| The extension side panel loaded fonts with a remote `@import`, which Manifest V3's `default-src 'self'` blocks — the faces never arrive, and every panel open would announce itself to a third party | Scanning the built extension for remote resources | The import is gone; the faces are still named first in each stack, so they are used when the reader already has them, and the system stack carries the design otherwise. |
+| The films quoted `chalk.hex("#73e3d3")` and the tagline `context → plan → verify → repair` — both retired when the brand became `BRAND = { charcoal, offwhite }` and `observe → plan → verify → repair` | Comparing the extracted snippets against the current source | The extractor now anchors on `BRAND`, the film's ground, ink and accent are derived from those two values, its success and failure colours are the CLI's own `good`/`bad`, and the on-screen swatch shows the real palette. Both films re-rendered. |
+| `individual/cli/main.ts` still painted the pairing code with the retired accent, so the shipped CLI contradicted its own brand module in two places | Grepping for the retired colour | Both use the brand `ink`. |
+| A `private db` and `private tenant` on the Slack receiver were stored and never read | `noUnusedLocals` | Made plain constructor parameters. |
+| `openPullRequest` took a `task` it never used, and `safeSummary` took one it never mentioned | `noUnusedParameters` | The parameter is gone from the first; the second now states the task id, which is real provenance for the PR body. |
+| Sixteen unused imports and six dead locals across both editions and the films | `noUnusedLocals` / `noUnusedParameters` | Removed. |
+
+### Quality gates now enforced, not just run once
+
+`noUnusedLocals`, `noUnusedParameters`, `noImplicitReturns`, `noFallthroughCasesInSwitch` and
+`noImplicitOverride` were added to all five TypeScript projects — the service, the individual
+edition, the browser extension, the VS Code extension and the films. Every project compiles clean
+under them, so this class of rot fails the build from here rather than accumulating.
+
+Prettier now passes `--check` across `src`, `individual`, `tests`, `scripts` and `video/src`.
+
+Scans that came back empty: no `TODO`/`FIXME`/`XXX`, no `debugger`, no `.only`/`.skip` left in tests,
+no absolute scratch paths, no `eval` or `new Function` in the built extension, no remote resources in
+the built extension, and no styling class used by the panel that the stylesheet does not define.
+
+### The suite got four times faster
+
+The individual suites booted a separate WASM PostgreSQL for each of twenty-one stores, which put the
+full run at **121 seconds**. One engine is now shared per worker and isolation comes from the tenant
+column — which is the product's own isolation mechanism, so the change exercises it rather than
+working around it — and the files run in parallel. The same 130 tests now finish in **≈25 seconds**,
+verified stable across three consecutive runs.
+
+The slow live-service probing that found the `cancel` bug was also replaced by
+`tests/individual-api.test.ts`, which drives the same routes in process with Fastify's `inject`: no
+port, no spawned service, eleven cases in about six seconds.
 
 ---
 

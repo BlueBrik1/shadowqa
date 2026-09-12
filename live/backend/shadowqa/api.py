@@ -5,9 +5,9 @@ import uuid
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query
 from pydantic import BaseModel
 
-from . import demo, git_ops, memory, pipeline, qa
-from .config import settings
-from .db import audit, audit_log, get_incident, incidents, llm_log, update_incident
+from . import core_link, demo, git_ops, memory, pipeline, qa
+from .config import AUTONOMY_LEVELS, settings
+from .db import STORE, audit, audit_log, get_incident, incidents, llm_log, update_incident
 from .workspace import WorkspaceError, get_workspace
 
 router = APIRouter(prefix="/api/shadowqa", tags=["shadowqa"])
@@ -43,9 +43,11 @@ async def health(x_shadowqa_token: str | None = Header(default=None)):
     require_token(x_shadowqa_token)
     ws = get_workspace()
     git = await git_ops.status(ws)
+    policy = await core_link.policy()
     return {"ok": True, "workspace": ws.name, "root": str(ws.root), "write_roots": [ws.rel(p) for p in ws.write_roots],
-            "autonomy": settings.autonomy, "models": {"primary": settings.primary_model, "fallback": settings.fallback_model},
-            "git": git}
+            "autonomy": policy["autonomy"], "mode": policy.get("mode"), "policy_source": policy.get("source"),
+            "models": {"primary": settings.primary_model, "fallback": settings.fallback_model},
+            "store": STORE, "shadowqa": await core_link.health(), "git": git}
 
 
 @router.post("/incidents")
@@ -236,17 +238,38 @@ class SettingsUpdate(BaseModel):
 @router.get("/settings")
 async def read_settings(x_shadowqa_token: str | None = Header(default=None)):
     require_token(x_shadowqa_token)
-    return {"autonomy": settings.autonomy, "policies": ["approve_all", "auto_low"], "models": {"primary": settings.primary_model, "fallback": settings.fallback_model}}
+    policy = await core_link.policy()
+    return {"autonomy": policy["autonomy"], "mode": policy.get("mode"), "source": policy.get("source"), "linked": settings.core_linked,
+            "policies": list(AUTONOMY_LEVELS), "models": {"primary": settings.primary_model, "fallback": settings.fallback_model}}
 
 
 @router.put("/settings")
 async def write_settings(body: SettingsUpdate, x_shadowqa_token: str | None = Header(default=None)):
     require_token(x_shadowqa_token)
-    if body.autonomy not in ("approve_all", "auto_low"):
-        raise HTTPException(status_code=400, detail="autonomy must be approve_all or auto_low")
+    if settings.core_linked:
+        raise HTTPException(status_code=409, detail="this workspace follows its ShadowQA project mode; change it with `shadowqa project mode <id> <mode>`")
+    if body.autonomy not in AUTONOMY_LEVELS:
+        raise HTTPException(status_code=400, detail=f"autonomy must be one of {', '.join(AUTONOMY_LEVELS)}")
     settings.autonomy = body.autonomy
     await audit("policy.changed", actor="developer", autonomy=body.autonomy)
     return {"autonomy": settings.autonomy}
+
+
+@router.post("/incidents/{incident_id}/fix")
+async def fix_now(incident_id: str, x_shadowqa_token: str | None = Header(default=None)):
+    """`shadowqa live approve <incident>` when the CLI can reach Live directly: apply the diagnosed patch under the project mode."""
+    require_token(x_shadowqa_token)
+    inc = await get_incident(incident_id)
+    if not inc:
+        raise HTTPException(status_code=404, detail="incident not found")
+    if inc.get("status") != "diagnosed":
+        raise HTTPException(status_code=409, detail=f"cannot apply in status {inc.get('status')}")
+    policy = await core_link.policy()
+    if not core_link.may_write(policy["autonomy"]):
+        raise HTTPException(status_code=409, detail=f"project mode '{policy.get('mode') or policy['autonomy']}' does not allow edits")
+    await audit("developer.approved_fix", incident_id, actor="cli")
+    asyncio.create_task(pipeline.run_apply(incident_id, actor="cli"))
+    return {"ok": True, "mode": policy.get("mode"), "autonomy": policy["autonomy"]}
 
 
 @router.get("/demo/scenarios")

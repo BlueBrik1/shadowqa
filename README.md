@@ -209,7 +209,7 @@ The `entities` table stores typed JSON records under `(tenant, kind, id)` with a
 `video/` is a [Remotion](https://www.remotion.dev) project holding one film per edition. Every code
 element on screen is lifted out of this repository at build time by `video/scripts/extract.mjs`:
 anchors are matched against the real files, and a moved anchor fails the build instead of letting a
-film drift away from the product. The accent colour is read from `src/cli/ui.ts`, the job states from
+film drift away from the product. The brand palette is read from `BRAND` in `src/cli/ui.ts`, the job states from
 `src/core/contracts.ts`, the isolation flags from `src/runner/sandbox.ts`, and the patch shown is the
 one `npm run demo` and `scripts/individual-demo.ts` actually verify.
 
@@ -250,6 +250,7 @@ npm audit
 | `tests/individual-capture.test.ts` | Turn identity, duplicate capture, streaming completion, conversation switching, partial coverage, project isolation, pausing and deletion of derived context. |
 | `tests/individual-adapters.test.ts` | ChatGPT and Claude adapters against page fixtures: roles, order, site ids, stripped controls, streaming and the unrecognised-page warning. |
 | `tests/individual-companion.test.ts` | Native-messaging framing and limits, pairing success/expiry/reuse/revocation, and the Claude Code and Codex session parsers. |
+| `tests/individual-api.test.ts` | The HTTP surface driven in process with Fastify `inject`: public versus credentialled routes, what an extension token may and may not do, capture and its rejection of a malformed batch, stale-digest approval, the refusal to cancel a finished task, and the refusal to plan with no model configured. |
 | `tests/individual-execution.test.ts` | Uncommitted-work preservation, verification in a fresh copy, every patch gate, the local branch commit, plan freshness, backend availability and failure reporting. |
 
 Tests use the same PostgreSQL schema and SQL as production, through an embedded PostgreSQL engine. They mock external network APIs; they do not prove live account permissions or model quality. The real sandbox smoke is separate because it needs Docker and the built image.

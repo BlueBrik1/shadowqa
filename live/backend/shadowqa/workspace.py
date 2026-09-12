@@ -29,9 +29,15 @@ class Workspace:
 
     @classmethod
     def load(cls, path: Path | None = None) -> "Workspace":
-        p = path or settings.workspace_config_path
+        p = Path(path or settings.workspace_config_path)
         with open(p, "r", encoding="utf-8") as fh:
-            return cls(json.load(fh))
+            cfg = json.load(fh)
+        # A relative root is resolved against the config file, so the repository's own
+        # `live/shadowqa.workspace.json` (root ".") works from any checkout location.
+        root = Path(cfg.get("root", "."))
+        if not root.is_absolute():
+            cfg["root"] = str((p.parent / root).resolve())
+        return cls(cfg)
 
     # ---- boundaries -------------------------------------------------------
     def _under(self, path: Path, roots: Iterable[Path]) -> bool:

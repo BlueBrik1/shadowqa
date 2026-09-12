@@ -15,7 +15,9 @@ a GitHub App.
 | Check | Command | Result |
 | --- | --- | --- |
 | Type safety | `npm run typecheck` | Clean across `src`, `individual`, the VS Code extension and the browser extension. |
-| Unit and integration suites | `npm test` | 11 files, 119 tests, all passing, against a real PostgreSQL engine (PGlite) using the production schema and SQL. |
+| Unit and integration suites | `npm test` | 12 files, 130 tests, all passing in ≈25 s, against a real PostgreSQL engine (PGlite) using the production schema and SQL. |
+| Compiler-enforced quality | `npm run typecheck` | All five projects also compile under `noUnusedLocals`, `noUnusedParameters`, `noImplicitReturns`, `noFallthroughCasesInSwitch` and `noImplicitOverride`. |
+| Formatting | `prettier --check` | Clean across `src`, `individual`, `tests`, `scripts` and `video/src`. |
 | Full build | `npm run build` | `dist/`, `dist-individual/`, `vscode-extension/out/` and `individual/extension/dist/` all produced. |
 
 ### Team edition
@@ -30,6 +32,9 @@ a GitHub App.
 | Check | Command | Result |
 | --- | --- | --- |
 | End-to-end path | `npx tsx scripts/individual-demo.ts` | 14 stages passed in a disposable home against a disposable clone of `fixtures/duplicate-submit`. |
+| **The whole path through the shipped CLI** | `serve` + `extract` → `plan` → `approve` → `task` → `diff` | Ran for real against a disposable home and clone, with a **live Claude Code session** doing the edit. The agent reported that it could not run the tests; ShadowQA ran them itself and recorded `exit 0`. Afterwards `HEAD` was unmoved, the working tree clean, and `shadowqa/<task>` held the fix. |
+| Every CLI command | driven one by one against a running service | `status`, `doctor`, `project list/add/mode/backend/repo`, `conversations`, `context`, `extract`, `items`, `confirm/reject/revise`, `plan`, `plans`, `show`, `approve`, `tasks`, `task`, `diff`, `open`, `cancel`, `pr`, `findings`, `scan`, `repair`, `sessions *`, `pair`, `unpair`, `companion *`. Every failure path returned a sentence and a non-zero exit, never a stack trace. |
+| HTTP surface | `npx vitest run tests/individual-api.test.ts` | Driven in process with Fastify `inject`: public versus credentialled routes, the six owner-only routes an extension token is refused, capture and duplicate capture, a malformed batch, stale-digest approval, the refusal to cancel a finished task, 404s for unknown task and plan, and the refusal to plan with no model configured. |
 | Capture behaviour | `npx vitest run tests/individual-capture.test.ts` | Duplicate capture stores nothing; a streamed reply completes in place rather than becoming a second turn; an incomplete frame never overwrites a finished turn; conversation switching keeps threads separate; partial coverage is recorded as partial; projects are isolated; a paused conversation stops accepting captures; deleting a conversation removes its derived items. |
 | Site adapters | `npx vitest run tests/individual-adapters.test.ts` | Against `individual/extension/fixtures/`: both roles captured in order with the site's own ids, button labels and screen-reader text excluded, only the final assistant turn marked incomplete while streaming, and an unrecognised page producing a warning rather than an empty conversation. |
 | Companion | `npx vitest run tests/individual-companion.test.ts` | Frame round-trip, partial frames, two frames in one chunk, both size limits, and a handler failure becoming an error reply rather than a crashed host. Pairing: a valid code issues a working extension token that cannot mint pairing codes; a wrong code, a reused code and an expired code are all refused. Session parsers verified against the real on-disk formats. |

@@ -1006,9 +1006,7 @@ cli
     const result = await (await client()).call("/pair/start", "POST", {});
     if (json()) return out(result);
     banner();
-    console.log(
-      "  " + ink.bold(result.code.split("").join(" ")) + "\n",
-    );
+    console.log("  " + ink.bold(result.code.split("").join(" ")) + "\n");
     note(
       `Type it into the ShadowQA side panel within ${result.expiresInMinutes} minutes.`,
     );
@@ -1184,9 +1182,7 @@ cli
         if (choice === "7") {
           const result = await service.call<any>("/pair/start", "POST", {});
           console.log(
-            "\n  " +
-              ink.bold(result.code.split("").join(" ")) +
-              "\n",
+            "\n  " + ink.bold(result.code.split("").join(" ")) + "\n",
           );
         }
       } catch (e: any) {
