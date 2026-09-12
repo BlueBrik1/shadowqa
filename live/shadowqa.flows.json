@@ -1,0 +1,99 @@
+{
+  "flows": [
+    {
+      "name": "Dashboard",
+      "steps": [{ "action": "navigate", "route": "/", "label": "Open dashboard" }],
+      "expectations": { "request": { "method": "GET", "path": "/api/demo/dashboard" }, "ui": { "selector": "[data-testid=\"dashboard-page\"]" } }
+    },
+    {
+      "name": "Products",
+      "steps": [{ "action": "navigate", "route": "/products", "label": "Open catalog" }],
+      "expectations": { "request": { "method": "GET", "path": "/api/demo/products" }, "ui": { "selector": "[data-testid=\"product-card-lum-01\"]" } }
+    },
+    {
+      "name": "Product details",
+      "steps": [
+        { "action": "navigate", "route": "/products", "label": "Open catalog" },
+        { "action": "click", "selector": "[data-testid=\"product-card-lum-02\"]", "label": "Open Beacon lantern" }
+      ],
+      "expectations": { "request": { "method": "GET", "path": "/api/demo/products/lum-02" }, "ui": { "selector": "[data-testid=\"product-detail-page\"]" } }
+    },
+    {
+      "name": "Cart",
+      "steps": [
+        { "action": "navigate", "route": "/products", "label": "Open catalog" },
+        { "action": "click", "selector": "[data-testid=\"add-to-cart-lum-04\"]", "label": "Add Vessel flask" },
+        { "action": "navigate", "route": "/cart", "label": "Open cart" },
+        { "action": "fill", "selector": "[data-testid=\"cart-promo-input\"]", "value": "lumen20", "label": "Enter promo code" },
+        { "action": "click", "selector": "[data-testid=\"cart-apply-promo-btn\"]", "label": "Apply promo" }
+      ],
+      "expectations": { "ui": { "selector": "[data-testid=\"cart-discount-row\"]" } }
+    },
+    {
+      "name": "Checkout",
+      "steps": [
+        { "action": "navigate", "route": "/products", "label": "Open catalog" },
+        { "action": "click", "selector": "[data-testid=\"add-to-cart-lum-01\"]", "label": "Add Kodiak knife" },
+        { "action": "navigate", "route": "/checkout", "label": "Open checkout" },
+        { "action": "fill", "selector": "[data-testid=\"checkout-name\"]", "value": "QA Runner", "label": "Enter name" },
+        { "action": "fill", "selector": "[data-testid=\"checkout-email\"]", "value": "qa@lumen.supply", "label": "Enter email" },
+        { "action": "fill", "selector": "[data-testid=\"checkout-address\"]", "value": "1 Ridge Road", "label": "Enter address" },
+        { "action": "fill", "selector": "[data-testid=\"checkout-city\"]", "value": "Bend", "label": "Enter city" },
+        { "action": "fill", "selector": "[data-testid=\"checkout-postal\"]", "value": "97701", "label": "Enter postal code" },
+        { "action": "fill", "selector": "[data-testid=\"checkout-card-number\"]", "value": "4242 4242 4242 4242", "label": "Enter card number" },
+        { "action": "fill", "selector": "[data-testid=\"checkout-card-exp\"]", "value": "12/28", "label": "Enter expiry" },
+        { "action": "fill", "selector": "[data-testid=\"checkout-card-cvc\"]", "value": "123", "label": "Enter CVC" },
+        { "action": "click", "selector": "[data-testid=\"checkout-pay-btn\"]", "label": "Click Pay" }
+      ],
+      "expectations": { "request": { "method": "POST", "path": "/api/demo/payment" }, "ui": { "selector": "[data-testid=\"order-confirmation\"]" } }
+    },
+    {
+      "name": "Orders",
+      "steps": [{ "action": "navigate", "route": "/orders", "label": "Open orders" }],
+      "expectations": { "request": { "method": "GET", "path": "/api/demo/orders" }, "ui": { "selector": "[data-testid=\"orders-page\"]" } }
+    },
+    {
+      "name": "Order tracking",
+      "steps": [
+        { "action": "navigate", "route": "/orders", "label": "Open orders" },
+        { "action": "click", "selector": "[data-testid=\"order-link-LUM-8842\"]", "label": "Open shipped order" },
+        { "action": "click", "selector": "[data-testid=\"order-track-btn\"]", "label": "Track shipment" }
+      ],
+      "expectations": { "request": { "method": "GET", "path": "/api/demo/orders/LUM-8842/tracking" }, "ui": { "selector": "[data-testid=\"order-tracking-events\"]" } }
+    },
+    {
+      "name": "Wishlist",
+      "steps": [{ "action": "navigate", "route": "/wishlist", "label": "Open wishlist" }],
+      "expectations": { "ui": { "selector": "[data-testid=\"wishlist-page\"]" } }
+    },
+    {
+      "name": "Account",
+      "steps": [
+        { "action": "navigate", "route": "/account", "label": "Open account" },
+        { "action": "click", "selector": "[data-testid=\"account-save-btn\"]", "label": "Save profile" }
+      ],
+      "expectations": { "request": { "method": "PUT", "path": "/api/demo/account" }, "ui": { "selector": "[data-testid=\"account-saved\"]" } }
+    },
+    {
+      "name": "Help",
+      "steps": [
+        { "action": "navigate", "route": "/help", "label": "Open help" },
+        { "action": "click", "selector": "[data-testid=\"faq-toggle-1\"]", "label": "Expand second question" }
+      ],
+      "expectations": { "request": { "method": "GET", "path": "/api/demo/help/faq" }, "ui": { "selector": "[data-testid=\"faq-answer-1\"]" } }
+    },
+    {
+      "name": "Support tickets",
+      "steps": [{ "action": "navigate", "route": "/help", "label": "Open help" }],
+      "expectations": { "request": { "method": "GET", "path": "/api/demo/support/tickets" }, "ui": { "selector": "[data-testid=\"help-ticket-list\"]" } }
+    },
+    {
+      "name": "Settings",
+      "steps": [
+        { "action": "navigate", "route": "/settings", "label": "Open settings" },
+        { "action": "click", "selector": "[data-testid=\"settings-save-btn\"]", "label": "Save preferences" }
+      ],
+      "expectations": { "request": { "method": "PUT", "path": "/api/demo/settings" }, "ui": { "selector": "[data-testid=\"settings-saved\"]" } }
+    }
+  ]
+}

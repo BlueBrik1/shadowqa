@@ -1,0 +1,24 @@
+{
+  "projects": [{
+    "id": "example", "name": "Example project", "audience": "team",
+    "repository": {
+      "id": "example-repo", "githubId": 123456, "owner": "YOUR_ORG", "name": "YOUR_REPO",
+      "installationId": 123456, "defaultBranch": "main", "visibility": "private",
+      "localPath": "C:/projects/YOUR_REPO"
+    },
+    "channels": [{ "id": "C0123456789", "private": false }],
+    "profile": {
+      "id": "node-tests-v1", "image": "shadowqa-sandbox:1.15.10",
+      "checks": [{ "id": "test", "argv": ["npm", "test"], "timeoutSeconds": 120 }],
+      "install": [], "allowedPaths": ["src/", "test/", "tests/", "docs/", "README.md"],
+      "protectedPaths": [".github/", ".env", "package.json", "package-lock.json"],
+      "autoPaths": ["docs/", "README.md"], "maxFiles": 12, "maxLines": 400,
+      "timeoutSeconds": 1200, "memoryMb": 2048, "cpus": 2,
+      "reviewed": false, "externalInferenceApproved": false,
+      "requiredChecks": ["test"], "scanIntervalMinutes": 1440
+    },
+    "policy": { "mode": "approval", "version": 1, "dailyJobCap": 10, "repairAttempts": 2,
+      "cooldownMinutes": 60, "autoMerge": false, "requiredGithubChecks": [],
+      "publishSummary": "Automated maintenance verified by ShadowQA.", "summaryApproved": false }
+  }]
+}

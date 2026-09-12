@@ -1,0 +1,36 @@
+{
+  "name": "Lumen Supply Co.",
+  "root": "/app",
+  "frontend_dir": "frontend",
+  "backend_dir": "backend",
+  "read_roots": [
+    "frontend/src",
+    "frontend/package.json",
+    "backend/demo_store",
+    "backend/requirements.txt",
+    "shadowqa.flows.json"
+  ],
+  "write_roots": [
+    "frontend/src/demo",
+    "backend/demo_store"
+  ],
+  "deny": [
+    "frontend/src/shadowqa",
+    "backend/shadowqa",
+    "backend/server.py",
+    "frontend/.env",
+    "backend/.env"
+  ],
+  "source_map": {
+    "strip_prefixes": ["webpack://frontend/./", "webpack:///./", "webpack://frontend/", "webpack:///"],
+    "map_to": "frontend"
+  },
+  "limits": {
+    "max_files_per_patch": 3,
+    "max_changed_lines": 120,
+    "max_file_read_bytes": 200000
+  },
+  "git": {
+    "branch_prefix": "shadowqa/fix-"
+  }
+}

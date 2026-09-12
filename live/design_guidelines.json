@@ -1,0 +1,219 @@
+{
+  "project_name": "ShadowQA & Lumen Supply Co.",
+  "archetype": "Hybrid Fullstack Developer Tool + Artisanal E-Commerce",
+  "design_narrative": "A duality between the physical craftsmanship of Lumen Supply Co. (warm tactile slate, raw brass, obsidian, bone parchment, Swiss-editorial typography) and the invisible precision intelligence of ShadowQA (Zero-UI ambient agent, sub-millisecond dark-mode glassmorphic HUD, monospaced diagnostic telemetry, and surgical diffs).",
+  "theme_strategy": {
+    "lumen_store": "Artisanal Outdoor Precision (Light/Warm Canvas default with deep charcoal structure and amber/burnt ochre kinetic triggers)",
+    "shadow_qa_overlay": "Shadow DOM Dark Obsidian HUD (Zero-UI when healthy, floating ambient dot, surgical incident card, monospaced diff viewer, multi-stage replay checklist, and 11-tab drawer)"
+  },
+  "fonts": {
+    "heading_store": "'Cabinet Grotesk', 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif",
+    "body_store": "'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif",
+    "overlay_ui": "'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
+    "overlay_label": "ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@500;700;800;900&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+  },
+  "colors": {
+    "store": {
+      "bg_canvas": "#FBF9F5",
+      "bg_card": "#FFFFFF",
+      "bg_surface_alt": "#F3EFE8",
+      "border": "#E5DFD5",
+      "border_dark": "#292524",
+      "text_primary": "#1C1917",
+      "text_secondary": "#57534E",
+      "text_muted": "#A8A29E",
+      "accent_amber": "#C26723",
+      "accent_brass": "#B45309",
+      "accent_forest": "#1C3829",
+      "cta_dark": "#171513",
+      "cta_dark_hover": "#2B2623"
+    },
+    "shadow_qa": {
+      "overlay_bg": "rgba(10, 11, 14, 0.88)",
+      "overlay_border": "rgba(255, 255, 255, 0.12)",
+      "panel_bg": "#0B0C0E",
+      "panel_subsurface": "#121418",
+      "panel_subsurface_hover": "#1A1D23",
+      "text_primary": "#F1F5F9",
+      "text_muted": "#94A3B8",
+      "text_subtle": "#64748B",
+      "accent_red": "#EF4444",
+      "accent_green": "#10B981",
+      "accent_emerald": "#059669",
+      "accent_amber": "#F59E0B",
+      "accent_cyan": "#06B6D4",
+      "accent_indigo": "#6366F1",
+      "diff_add_bg": "rgba(16, 185, 129, 0.12)",
+      "diff_add_text": "#34D399",
+      "diff_del_bg": "rgba(239, 68, 68, 0.12)",
+      "diff_del_text": "#F87171",
+      "diff_neutral_text": "#CBD5E1"
+    }
+  },
+  "shadow_qa_css_string": ":host { --sqa-bg: rgba(10, 11, 14, 0.92); --sqa-card-bg: #0D0F13; --sqa-border: rgba(255, 255, 255, 0.12); --sqa-border-focus: rgba(239, 68, 68, 0.4); --sqa-text: #F1F5F9; --sqa-muted: #94A3B8; --sqa-dim: #64748B; --sqa-red: #EF4444; --sqa-green: #10B981; --sqa-amber: #F59E0B; --sqa-cyan: #06B6D4; --sqa-indigo: #6366F1; font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.5; color: var(--sqa-text); } .sqa-dock { position: fixed; bottom: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; pointer-events: none; } .sqa-interactive { pointer-events: auto; } .sqa-pulse-dot { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 12px currentColor; } .sqa-card { width: 380px; max-width: calc(100vw - 32px); background: var(--sqa-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--sqa-border); border-radius: 8px; box-shadow: 0 16px 36px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05); padding: 16px; overflow: hidden; animation: sqaSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1); } @keyframes sqaSlideUp { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } } .sqa-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; } .sqa-badge-low { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3); } .sqa-badge-medium { background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); } .sqa-badge-high { background: rgba(239, 68, 68, 0.15); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3); } .sqa-diff-view { background: #07080A; border: 1px solid var(--sqa-border); border-radius: 6px; padding: 10px; margin: 10px 0; font-family: 'JetBrains Mono', monospace; font-size: 11px; overflow-x: auto; } .sqa-diff-del { background: rgba(239, 68, 68, 0.12); color: #F87171; display: block; padding: 1px 4px; border-left: 2px solid #EF4444; } .sqa-diff-add { background: rgba(16, 185, 129, 0.12); color: #34D399; display: block; padding: 1px 4px; border-left: 2px solid #10B981; } .sqa-diff-ctx { color: #64748B; display: block; padding: 1px 4px; } .sqa-checklist-item { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); } .sqa-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 680px; max-width: 100vw; background: #090A0D; border-left: 1px solid var(--sqa-border); z-index: 1000000; box-shadow: -20px 0 50px rgba(0,0,0,0.7); display: flex; flex-direction: column; animation: sqaDrawerIn 0.28s cubic-bezier(0.16, 1, 0.3, 1); } @keyframes sqaDrawerIn { from { transform: translateX(100%); } to { transform: translateX(0); } } .sqa-tab-btn { padding: 8px 12px; font-size: 11px; font-weight: 500; border-bottom: 2px solid transparent; color: var(--sqa-muted); transition: all 0.15s ease; cursor: pointer; background: transparent; border-top: none; border-left: none; border-right: none; white-space: nowrap; } .sqa-tab-btn.active { color: #FFF; border-bottom-color: var(--sqa-cyan); background: rgba(255,255,255,0.03); }",
+  "image_urls": {
+    "hero_camp": "https://images.unsplash.com/photo-1697898807751-a4380192892d?auto=format&fit=crop&w=1200&q=80",
+    "tent_fog": "https://images.unsplash.com/photo-1679274800600-d41929f429eb?auto=format&fit=crop&w=800&q=80",
+    "workshop_gear": "https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=800&q=80",
+    "tactical_knife": "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=800&q=80",
+    "brass_lantern": "https://images.unsplash.com/photo-1508873696983-2df5293cb395?auto=format&fit=crop&w=800&q=80",
+    "leather_pack": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80",
+    "titanium_flask": "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80",
+    "canvas_jacket": "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=800&q=80"
+  },
+  "catalog_products": [
+    {
+      "id": "lum-01",
+      "name": "Kodiak Field Anvil Knife",
+      "tagline": "Grade-5 Titanium & D2 Tool Steel",
+      "price": 285.00,
+      "category": "Edge & Craft",
+      "rating": 4.9,
+      "reviews": 128,
+      "stock": 14,
+      "image": "https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&w=800&q=80",
+      "description": "Engineered for harsh sub-alpine environments. Hand-beveled Japanese steel edge with micarta scale grip and cryo-quenched core.",
+      "specs": { "Steel": "D2 Tool Steel (60 HRC)", "Handle": "Canvas Micarta", "Blade Length": "4.2 inches", "Weight": "6.8 oz" }
+    },
+    {
+      "id": "lum-02",
+      "name": "Beacon No. 4 Brass Mantle Lantern",
+      "tagline": "Pressurized Cold-Rolled Brass",
+      "price": 195.00,
+      "category": "Camp & Illumination",
+      "rating": 4.8,
+      "reviews": 94,
+      "stock": 8,
+      "image": "https://images.unsplash.com/photo-1508873696983-2df5293cb395?auto=format&fit=crop&w=800&q=80",
+      "description": "Spun brass reservoir with precision needle valve. 400 lumen omnidirectional warm light rated for 28 knot crosswinds.",
+      "specs": { "Fuel": "White Gas / Kerosene", "Output": "420 Lumens", "Runtime": "18 Hours", "Material": "Solid C3604 Brass" }
+    },
+    {
+      "id": "lum-03",
+      "name": "Hauler 48L Expedition Rucksack",
+      "tagline": "Waxed 18oz Cotton Canvas & Bridle Leather",
+      "price": 340.00,
+      "category": "Pack & Carry",
+      "rating": 5.0,
+      "reviews": 210,
+      "stock": 5,
+      "image": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=800&q=80",
+      "description": "Internal aluminum stays coupled with English bridle harness leather. Weatherproof roll-top seal with heavy storm flaps.",
+      "specs": { "Capacity": "48 Liters", "Fabric": "18oz Martexin Waxed Duck", "Hardware": "Solid Cast Bronze", "Weight": "3.2 lbs" }
+    },
+    {
+      "id": "lum-04",
+      "name": "Vessel Ti-16 Pocket Flask",
+      "tagline": "Single-Piece Titanium Hydroformed Shell",
+      "price": 120.00,
+      "category": "Field Bar",
+      "rating": 4.7,
+      "reviews": 67,
+      "stock": 22,
+      "image": "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=800&q=80",
+      "description": "Zero flavor leaching, ultralight biocompatible titanium. Knurled knurling on threaded cap with food-grade silicone ring.",
+      "specs": { "Volume": "16 fl oz / 470ml", "Wall": "0.6mm Grade 2 Ti", "Weight": "3.1 oz", "Finish": "Raw Stone Wash" }
+    },
+    {
+      "id": "lum-05",
+      "name": "Ironwood Work Overshirt",
+      "tagline": "14oz Blanket-Lined Heavy Duck Cloth",
+      "price": 240.00,
+      "category": "Apparel",
+      "rating": 4.9,
+      "reviews": 88,
+      "stock": 11,
+      "image": "https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=800&q=80",
+      "description": "Triple needle chainstitch on stress points. Brushed wool blend interior with copper tack shank buttons.",
+      "specs": { "Shell": "100% Cotton 14oz Canvas", "Lining": "60% Recycled Wool", "Origin": "Pacific Northwest", "Fit": "Tailored Work" }
+    },
+    {
+      "id": "lum-06",
+      "name": "Ridge Split-Timber Hatchet",
+      "tagline": "Drop-Forged Swedish 5160 High-Carbon Steel",
+      "price": 210.00,
+      "category": "Edge & Craft",
+      "rating": 4.8,
+      "reviews": 115,
+      "stock": 6,
+      "image": "https://images.unsplash.com/photo-1517649763962-0c623266ddc0?auto=format&fit=crop&w=800&q=80",
+      "description": "Balanced 1.75 lb head mounted to kiln-dried Grade-A hickory with boiled linseed oil finish. Hand-stitched welted sheath.",
+      "specs": { "Handle": "American Hickory 19in", "Head": "5160 Spring Steel", "Bevel": "25-degree convex", "Sheath": "Vegetable Tanned Cowhide" }
+    }
+  ],
+  "mock_failure_scenarios": [
+    {
+      "id": "checkout_stripe_token_null",
+      "title": "Checkout failed: Cannot read properties of undefined (reading 'token')",
+      "location": "src/payment/checkout.js:87",
+      "confidence": "96%",
+      "risk": "LOW",
+      "type": "TypeError",
+      "diff": {
+        "file": "src/payment/checkout.js",
+        "before": "  const { token } = paymentMethod;\n  const response = await api.post('/api/charge', { token, amount });",
+        "after": "  const token = paymentMethod?.token || paymentMethod?.id || 'tok_test_fallback';\n  const response = await api.post('/api/charge', { token, amount });"
+      },
+      "checks": [
+        { "name": "AST Syntax Validation", "status": "pass", "time": "12ms" },
+        { "name": "ESLint Rules (No-Unchecked-Null)", "status": "pass", "time": "24ms" },
+        { "name": "Unit Tests: paymentService.spec.js (4/4)", "status": "pass", "time": "68ms" },
+        { "name": "Security Audit (No Secrets Leaked)", "status": "pass", "time": "18ms" }
+      ],
+      "replay_steps": [
+        { "step": "Mount checkout state machine", "status": "done" },
+        { "step": "Inject test cart payload ($480.00 USD)", "status": "done" },
+        { "step": "Simulate card input token generation", "status": "done" },
+        { "step": "Dispatch POST /api/payment/checkout", "status": "done" },
+        { "step": "Assert HTTP 200 OK receipt", "status": "done" },
+        { "step": "Confirm order #LUM-8924 confirmed in store memory", "status": "verified" }
+      ]
+    },
+    {
+      "id": "cart_calc_nan_discount",
+      "title": "Cart calculation error: Promo code parsed as NaN",
+      "location": "src/store/cartStore.js:42",
+      "confidence": "94%",
+      "risk": "LOW",
+      "type": "ArithmeticError",
+      "diff": {
+        "file": "src/store/cartStore.js",
+        "before": "  const discount = subtotal * (promo.discountRate);\n  return subtotal - discount + shipping;",
+        "after": "  const rate = Number(promo?.discountRate) || 0;\n  const discount = Math.max(0, subtotal * rate);\n  return subtotal - discount + shipping;"
+      },
+      "checks": [
+        { "name": "Type Safety Guard Verification", "status": "pass", "time": "8ms" },
+        { "name": "ESLint Strict Numbers Check", "status": "pass", "time": "19ms" },
+        { "name": "Unit Tests: cartMath.spec.js (8/8)", "status": "pass", "time": "42ms" }
+      ],
+      "replay_steps": [
+        { "step": "Apply promo code 'LUMEN20'", "status": "done" },
+        { "step": "Recalculate subtotal with 2 items", "status": "done" },
+        { "step": "Assert numeric total ($504.00)", "status": "verified" }
+      ]
+    }
+  ],
+  "shadow_qa_tabs": [
+    { "id": "timeline", "label": "Timeline", "description": "Microsecond deterministic event log leading to failure" },
+    { "id": "graph", "label": "Context Graph", "description": "Component and state dependency visual node tree" },
+    { "id": "network", "label": "Network Chain", "description": "HTTP/XHR request headers, payload, and response breakdown" },
+    { "id": "source", "label": "Source Mapping", "description": "Minified stack trace mapped to original unbundled source" },
+    { "id": "diagnosis", "label": "AI Diagnosis", "description": "Causal reasoning chain & hypothesis probability matrix" },
+    { "id": "patch", "label": "Patch Diff", "description": "Surgical candidate patch with syntax highlighting" },
+    { "id": "validation", "label": "Validation", "description": "Syntax, lint, static analysis and regression harness" },
+    { "id": "replay", "label": "Replay", "description": "Automated headless transaction replay evidence runner" },
+    { "id": "health", "label": "App Health", "description": "Autonomous route heartbeat and sanity suite status" },
+    { "id": "memory", "label": "App Memory", "description": "Heap, DOM node counts, active event listeners, garbage leak monitor" },
+    { "id": "agent", "label": "Agent Telemetry", "description": "Autonomous agent compute latency, tokens, token budget, model routing" }
+  ],
+  "instructions_to_main_agent": [
+    "1. Render ShadowQA inside a Shadow DOM wrapper (or strict scoped isolation) with CSS variables matching the dark HUD theme, maintaining Zero-UI philosophy when healthy (a tiny, unobtrusive, calm indicator at bottom-right).",
+    "2. Build the full Lumen Supply Co. demo store: Navigation with Brand / Products / Orders / Dashboard / Settings / Cart counter, Hero with authentic outdoor photography, Filterable product grid, Product detail modal or slide-over, Interactive Cart with quantity modifications, Checkout flow with billing fields and real test failure trigger toggle ('Simulate Payment Gateway Failure' vs 'Normal Checkout'), Orders history, and Settings tab.",
+    "3. When a failure occurs (either triggered by user clicking 'Fail Checkout' or selecting 'Simulate Payment Failure'), immediately activate the ShadowQA HUD card: '🔴 ShadowQA / Checkout failed / Root cause src/payment/checkout.js:87 / Confidence 96% / Risk LOW / [View Fix] [Dismiss]'.",
+    "4. Clicking [View Fix] opens the minimal human-readable diff, shows the 4-step validation evidence, allows clicking [Apply & Replay], runs the step-by-step visual replay checklist with checkmarks ticking in real-time, and concludes with green verdict '🟢 FIX VERIFIED / UI RECOVERED'.",
+    "5. Include an [Open Inspector / Advanced Drawer] button that slides out the technical dark-mode drawer with all 11 tabs (Timeline, Graph, Network, Source, Diagnosis, Patch, Validation, Replay, Health, Memory, Agent Telemetry), packed with high-density production developer data.",
+    "6. Include a 'Trigger Fault Injection' control in the header or footer so evaluators can inspect ShadowQA anytime even if they haven't added items to cart.",
+    "7. All buttons, tabs, inputs, and status badges MUST carry distinct data-testid attributes (e.g. data-testid='sqa-incident-card', data-testid='sqa-apply-fix-btn', data-testid='checkout-pay-btn', etc.)."
+  ]
+}

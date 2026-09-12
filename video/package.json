@@ -1,0 +1,34 @@
+{
+  "name": "shadowqa-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remotion launch and explainer videos for ShadowQA Business and ShadowQA Individual.",
+  "scripts": {
+    "extract": "node scripts/extract.mjs",
+    "studio": "npm run extract && remotion studio",
+    "render": "npm run extract && node scripts/render.mjs",
+    "render:business": "npm run extract && remotion render src/index.ts ShadowQA-Business out/shadowqa-business.mp4",
+    "render:individual": "npm run extract && remotion render src/index.ts ShadowQA-Individual out/shadowqa-individual.mp4",
+    "still": "npm run extract && node scripts/stills.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.524",
+    "@remotion/google-fonts": "4.0.524",
+    "@remotion/paths": "4.0.524",
+    "@remotion/renderer": "4.0.524",
+    "@remotion/bundler": "4.0.524",
+    "@remotion/shapes": "4.0.524",
+    "@remotion/transitions": "4.0.524",
+    "prismjs": "1.30.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.524"
+  },
+  "devDependencies": {
+    "@types/prismjs": "1.26.5",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}

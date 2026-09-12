@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ShadowQA</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <span class="mark">◈</span>
+      <span class="wordmark">SHADOWQA</span>
+      <span class="grow"></span>
+      <span id="dot" class="dot" title="companion status"></span>
+    </header>
+
+    <main id="root">
+      <section id="pair" class="card hidden">
+        <h2>PAIR</h2>
+        <p class="dim">
+          Run <code>shadowqa-individual pair</code> in your terminal and type
+          the code here.
+        </p>
+        <div class="row">
+          <input
+            id="code"
+            maxlength="8"
+            placeholder="CODE"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="pair-submit">Pair</button>
+        </div>
+        <p id="pair-error" class="error hidden"></p>
+      </section>
+
+      <section id="page" class="card hidden">
+        <h2>THIS CONVERSATION</h2>
+        <div class="kv"><span>Site</span><b id="page-origin">—</b></div>
+        <div class="kv"><span>Title</span><b id="page-title">—</b></div>
+        <div class="kv"><span>Turns visible</span><b id="page-count">0</b></div>
+        <div class="kv"><span>Status</span><b id="page-status">—</b></div>
+        <p id="page-warning" class="warn hidden"></p>
+        <div id="track-row" class="row">
+          <select id="project"></select>
+          <button id="track">Track this conversation</button>
+        </div>
+        <div id="tracked-row" class="row hidden">
+          <button id="pause" class="ghost">Pause</button>
+          <button id="untrack" class="ghost">Remove</button>
+          <button id="forget" class="danger">Delete context</button>
+        </div>
+        <p class="dim small">
+          ShadowQA can only read what this page has rendered. Older turns you
+          have not scrolled to are not captured, and a conversation you have not
+          opened is not readable at all.
+        </p>
+      </section>
+
+      <section id="sync" class="card">
+        <h2>CAPTURE</h2>
+        <div class="kv"><span>Last sync</span><b id="last-sync">never</b></div>
+        <div class="kv">
+          <span>Companion</span><b id="companion-state">checking…</b>
+        </div>
+        <p id="sync-error" class="error hidden"></p>
+      </section>
+
+      <section id="conversations" class="card">
+        <h2>TRACKED</h2>
+        <ul id="conversation-list" class="list"></ul>
+        <p id="conversations-empty" class="dim small">Nothing tracked yet.</p>
+      </section>
+
+      <section id="project-views" class="card">
+        <h2>PROJECT</h2>
+        <nav class="tabs">
+          <button data-view="items" class="tab active">Context</button>
+          <button data-view="plans" class="tab">Plans</button>
+          <button data-view="tasks" class="tab">Work</button>
+          <button data-view="findings" class="tab">Findings</button>
+        </nav>
+        <div id="view" class="view">
+          <p class="dim small">Pair to see project data.</p>
+        </div>
+      </section>
+
+      <footer class="foot">
+        <span class="dim small"
+          >Plans, approval and execution happen in the CLI.</span
+        >
+        <code class="small">shadowqa-individual ui</code>
+      </footer>
+    </main>
+
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>

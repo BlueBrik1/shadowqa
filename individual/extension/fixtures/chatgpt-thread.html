@@ -1,0 +1,48 @@
+<!--
+  Fixture approximating a ChatGPT conversation page. It exercises the attributes the adapter
+  depends on: data-message-id, data-message-author-role, conversation-turn wrappers, a streaming
+  assistant turn, and decorative buttons that must not become message text.
+
+  This is a fixture, not a capture of the live site. Live-site compatibility is unverified.
+-->
+<html>
+  <head>
+    <title>Duplicate submissions - ChatGPT</title>
+  </head>
+  <body>
+    <main>
+      <h1>Duplicate submissions</h1>
+      <article data-testid="conversation-turn-2">
+        <div data-message-id="aaa-111" data-message-author-role="user">
+          <div class="whitespace-pre-wrap">
+            We double-charge when someone double-clicks submit. Two saves for one click.
+          </div>
+          <button aria-label="Edit message">Edit</button>
+        </div>
+      </article>
+      <article data-testid="conversation-turn-3">
+        <div data-message-id="bbb-222" data-message-author-role="assistant">
+          <div class="markdown">
+            <p>The in-flight guard has to be set before the await, not after.</p>
+            <pre><code>pending = true;</code></pre>
+          </div>
+          <span class="sr-only">Copied</span>
+          <button data-testid="copy-turn-action-button">Copy</button>
+        </div>
+      </article>
+      <article data-testid="conversation-turn-4">
+        <div data-message-id="ccc-333" data-message-author-role="user">
+          <div class="whitespace-pre-wrap">Don't touch the retry banner in this pass.</div>
+        </div>
+      </article>
+      <article data-testid="conversation-turn-5">
+        <div data-message-id="ddd-444" data-message-author-role="assistant">
+          <div class="markdown result-streaming"><p>Understood. I will keep the</p></div>
+        </div>
+      </article>
+    </main>
+    <div class="composer">
+      <button data-testid="stop-button" aria-label="Stop streaming">Stop</button>
+    </div>
+  </body>
+</html>

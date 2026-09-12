@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "ShadowQA Live",
+  "version": "0.1.0",
+  "description": "Injects the ShadowQA runtime into local development applications so failures are captured, diagnosed, fixed and replay-verified in place.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"],
+  "content_scripts": [
+    {
+      "matches": ["http://localhost/*", "http://127.0.0.1/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [{ "resources": ["shadowqa.js"], "matches": ["<all_urls>"] }],
+  "options_ui": { "page": "options.html", "open_in_tab": false },
+  "icons": {}
+}

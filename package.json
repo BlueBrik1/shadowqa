@@ -1,0 +1,63 @@
+{
+  "name": "shadowqa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Context-aware QA, approved agent repairs, and Gemini planning from your terminal — for teams (Slack + GitHub) and for individuals (ChatGPT + Claude).",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "bin": {
+    "shadowqa": "dist/cli/main.js",
+    "shadowqa-individual": "dist-individual/individual/cli/main.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli/main.ts",
+    "build": "tsc -p tsconfig.json && npm run build:extension && npm run build:individual",
+    "build:extension": "tsc -p vscode-extension/tsconfig.json",
+    "typecheck": "tsc --noEmit && tsc -p vscode-extension/tsconfig.json --noEmit && tsc -p tsconfig.individual.json --noEmit && tsc -p individual/extension/tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:sandbox": "tsx scripts/sandbox-smoke.ts",
+    "test:postgres": "tsx scripts/postgres-smoke.ts",
+    "docs:code": "tsx scripts/code-reference.ts",
+    "demo": "tsx scripts/demo.ts",
+    "start": "node dist/cli/main.js serve",
+    "check": "npm run typecheck && npm test",
+    "package:extension": "cd vscode-extension && node ../node_modules/@vscode/vsce/vsce package --no-dependencies --allow-missing-repository --skip-license",
+    "format": "prettier --write src tests scripts vscode-extension/src individual",
+    "sandbox:build": "docker build -t shadowqa-sandbox:1.15.10 -f infra/sandbox.Dockerfile .",
+    "build:individual": "tsc -p tsconfig.individual.json && npm run build:extension:individual",
+    "build:extension:individual": "node individual/extension/build.mjs",
+    "individual": "tsx individual/cli/main.ts",
+    "video:render": "cd video && npm run render",
+    "video:studio": "cd video && npm run studio"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@napi-rs/keyring": "2.0.0",
+    "@opencode-ai/sdk": "1.15.10",
+    "@slack/bolt": "5.1.0",
+    "@slack/socket-mode": "2.0.5",
+    "@slack/web-api": "7.12.0",
+    "chalk": "5.6.2",
+    "chokidar": "4.0.3",
+    "commander": "14.0.3",
+    "dotenv": "17.2.3",
+    "fastify": "5.12.4",
+    "pg": "8.16.3",
+    "zod": "4.6.2"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.30",
+    "@types/node": "24.10.1",
+    "@types/pg": "8.15.6",
+    "@types/vscode": "1.96.0",
+    "@vscode/vsce": "3.7.1",
+    "linkedom": "^0.18.11",
+    "prettier": "3.6.2",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vitest": "5.0.0"
+  }
+}

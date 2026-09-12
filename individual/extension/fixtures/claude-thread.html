@@ -1,0 +1,46 @@
+<!--
+  Fixture approximating a Claude Chat conversation page. Claude marks the two roles with
+  different hooks and does not wrap them in a shared turn container, so the adapter has to order
+  them by document position. Two consecutive user turns are included deliberately.
+
+  This is a fixture, not a capture of the live site. Live-site compatibility is unverified.
+-->
+<html>
+  <head>
+    <title>Retry banner - Claude</title>
+  </head>
+  <body>
+    <div class="flex">
+      <div data-testid="chat-menu-trigger">Retry banner</div>
+      <div data-test-render-count="1">
+        <div data-testid="user-message" data-message-uuid="u-1">
+          <p>The submit guard is set after the await. Can you explain the race?</p>
+        </div>
+      </div>
+      <div data-test-render-count="2">
+        <div class="font-claude-response" data-message-uuid="a-1">
+          <p>
+            Both clicks pass the <code>pending</code> check before either sets it, so save() runs
+            twice.
+          </p>
+          <button aria-label="Copy">Copy</button>
+        </div>
+      </div>
+      <div data-test-render-count="3">
+        <div data-testid="user-message" data-message-uuid="u-2">
+          <p>Also: do not change the tests.</p>
+        </div>
+      </div>
+      <div data-test-render-count="4">
+        <div data-testid="user-message" data-message-uuid="u-3">
+          <p>And keep the finally block as it is.</p>
+        </div>
+      </div>
+      <div data-test-render-count="5">
+        <div class="font-claude-response" data-message-uuid="a-2" data-is-streaming="true">
+          <p>Understood — I will only move the</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

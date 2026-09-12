@@ -1,0 +1,9 @@
+{
+  "display_information": {"name":"ShadowQA","description":"Source-linked development context and verified repair status.","background_color":"#17282a"},
+  "features": {"bot_user":{"display_name":"ShadowQA","always_online":false}},
+  "oauth_config": {"scopes":{"bot":["channels:read","channels:history","chat:write","app_mentions:read"]}},
+  "settings": {
+    "event_subscriptions":{"bot_events":["message.channels","app_mention","channel_left","channel_archive"]},
+    "org_deploy_enabled":false,"socket_mode_enabled":true,"token_rotation_enabled":false
+  }
+}

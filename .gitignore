@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.shadowqa/
+coverage/
+*.vsix
+*.pem
+*.key
+*.log
+vscode-extension/out/
+test-results/
+dist-individual/
+video/out/
+video/src/generated/

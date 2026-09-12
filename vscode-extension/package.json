@@ -1,0 +1,30 @@
+{
+  "name": "shadowqa", "displayName": "ShadowQA", "description": "ShadowQA plans, approvals, sessions, diffs and QA findings in your IDE.",
+  "version": "0.1.0", "publisher": "shadowqa-local", "engines": {"vscode": "^1.96.0"},
+  "categories": ["Other"], "main": "./out/extension.js", "activationEvents": ["onView:shadowqa.control"],
+  "contributes": {
+    "viewsContainers": {"activitybar": [{"id": "shadowqa", "title": "ShadowQA", "icon": "media/shadow.svg"}]},
+    "views": {"shadowqa": [{"id": "shadowqa.control", "name": "ShadowQA"}]},
+    "commands": [
+      {"command": "shadowqa.refresh", "title": "ShadowQA: Refresh", "icon": "$(refresh)"},
+      {"command": "shadowqa.terminal", "title": "ShadowQA: Open Command Center"},
+      {"command": "shadowqa.compile", "title": "ShadowQA: Compile Context, Generate Plan"},
+      {"command": "shadowqa.approve", "title": "ShadowQA: Review and Approve Plan"},
+      {"command": "shadowqa.attach", "title": "ShadowQA: Open Agent Session"},
+      {"command": "shadowqa.diff", "title": "ShadowQA: Show Verified Diff"},
+      {"command": "shadowqa.cancel", "title": "ShadowQA: Cancel Job"},
+      {"command": "shadowqa.pause", "title": "ShadowQA: Pause All Work"},
+      {"command": "shadowqa.resume", "title": "ShadowQA: Resume Observation"},
+      {"command": "shadowqa.mode", "title": "ShadowQA: Change Automation Mode"},
+      {"command": "shadowqa.watch", "title": "ShadowQA: Watch Saved Files"},
+      {"command": "shadowqa.details", "title": "ShadowQA: Show Details"}
+    ],
+    "menus": {"view/title": [{"command": "shadowqa.refresh", "when": "view == shadowqa.control", "group": "navigation"}]},
+    "configuration": {"title": "ShadowQA", "properties": {
+      "shadowqa.cliPath": {"type": "string", "default": "", "description": "Absolute path to ShadowQA dist/cli/main.js."},
+      "shadowqa.nodePath": {"type": "string", "default": "node", "description": "Node.js executable."},
+      "shadowqa.serviceUrl": {"type": "string", "default": "http://127.0.0.1:4380", "description": "ShadowQA API URL."},
+      "shadowqa.refreshSeconds": {"type": "number", "default": 15, "minimum": 5, "description": "Status refresh cadence."}
+    }}
+  }
+}

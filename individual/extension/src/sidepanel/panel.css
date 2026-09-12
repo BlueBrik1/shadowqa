@@ -1,0 +1,330 @@
+/*
+ * ShadowQA side panel. Charcoal and off-white only; Work Sans for the interface, Source Serif
+ * Pro for the one line that speaks, and the ◈ mark. Red marks a failure, green a verified success.
+ * No gradients, no accent colour, nothing that competes with the page the panel sits beside.
+ *
+ * The faces are named but never fetched. Manifest V3 gives extension pages a `default-src 'self'`
+ * policy, so a remote @import would be blocked and fail silently — and it would announce every
+ * panel open to a third party. Work Sans and Source Serif are used when the reader already has
+ * them; otherwise the system stack below carries the same weight and rhythm.
+ */
+:root {
+  --bg: #f4f1ea;
+  --ink: #1c1c1c;
+  --dim: #6f6c66;
+  --faint: #a9a59d;
+  --rule: #d9d5cc;
+  --panel: #ede9e0;
+  --bad: #e5484d;
+  --good: #3dd68c;
+  --sans:
+    "Work Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+  --serif:
+    "Source Serif Pro", "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono:
+    "SFMono-Regular", ui-monospace, Menlo, Consolas, "Liberation Mono",
+    monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1c;
+    --ink: #f4f1ea;
+    --dim: #a9a59d;
+    --faint: #6f6c66;
+    --rule: #2e2e2e;
+    --panel: #232323;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--bg);
+}
+
+.mark {
+  font-size: 15px;
+}
+
+.wordmark {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 2.4px;
+}
+
+.grow {
+  flex: 1;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--faint);
+  border: 1px solid var(--ink);
+}
+
+.dot.on {
+  background: var(--ink);
+}
+
+.dot.off {
+  background: transparent;
+}
+
+main {
+  padding: 12px 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 12px 13px;
+  background: var(--panel);
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 2.2px;
+  color: var(--dim);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.kv:last-of-type {
+  border-bottom: none;
+}
+
+.kv span {
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+
+.kv b {
+  font-weight: 500;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+button {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: 3px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+  cursor: pointer;
+  transition: opacity 120ms ease;
+}
+
+button:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--ink);
+}
+
+button.danger {
+  background: transparent;
+  color: var(--ink);
+  border-style: dashed;
+}
+
+select,
+input {
+  font: inherit;
+  font-size: 12px;
+  padding: 7px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--ink);
+  min-width: 0;
+  flex: 1;
+}
+
+input {
+  font-family: var(--mono);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.dim {
+  color: var(--dim);
+}
+
+.small {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.serif {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.error {
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--bad);
+  border-left: 2px solid var(--bad);
+  padding-left: 8px;
+}
+
+.warn {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--dim);
+  border-left: 2px dashed var(--faint);
+  padding-left: 8px;
+}
+
+.ok {
+  color: var(--good);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.list li {
+  border-top: 1px solid var(--rule);
+  padding-top: 8px;
+}
+
+.list li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.list .meta {
+  font-size: 10px;
+  color: var(--faint);
+  letter-spacing: 0.4px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.tab {
+  background: transparent;
+  color: var(--dim);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 6px 8px;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.tab.active {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.view {
+  max-height: 260px;
+  overflow: auto;
+}
+
+.entry {
+  border-top: 1px solid var(--rule);
+  padding: 7px 0;
+}
+
+.entry:first-child {
+  border-top: none;
+}
+
+.entry .label {
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 4px;
+}
