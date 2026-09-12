@@ -392,3 +392,38 @@ A developer reports a duplicate-submission bug in an approved Slack channel. Sha
 Later, another PR reintroduces the regression. A standing check detects it without a new prompt. ShadowQA records the finding, follows the configured repair policy, and opens a verified repair PR or asks for approval. After merge, it runs post-merge checks and records the exact outcome. That is the complete product loop to prove before adding more source integrations.  
   
 REVISIONS TO PLAN: Ensure there is minimal frontend, should be no web app frontend or UI, but instead a simple CLI with clean UI/showy glyphs/designs where you can showing approvals, auto mode, and everything else in the IDE. The tool would be storing context until a CLI command is run, user/team presses "Compile context, generate plan", then user approves (or it does it automatically depending on mode), etc, etc, something like that. Instead of local model from Ollama, use Gemini free tier API.
+## 17. Addendum — ShadowQA Live and the individual edition
+
+The loop in §16 proves the code before it ships. Two gaps remained after it worked.
+
+**The individual gap.** A developer working alone has the same drift problem the team has, but the
+"Slack" is a ChatGPT tab and a Claude tab that have never met, plus a Claude Code or Codex session on
+the laptop. Decisions made in one conversation are absent from the next, and the agent that finally
+writes the code sees none of them. The individual edition (`shadowqa-individual`) reads the
+conversations the developer chooses to track — through a browser side panel for ChatGPT and Claude
+and a native companion for Claude Code and Codex — extracts requirements, decisions and open
+questions with citations, and compiles a Gemini plan grounded in the repository. The plan runs in the
+developer's own coding tool (OpenCode, Claude Code or Codex) inside the IDE terminal, in a session
+they can step into, and is verified in a fresh copy before a branch is written. Same four modes,
+same gates, same findings list.
+
+**The runtime gap.** Checks and plans cover the code that exists; nothing watched the application
+actually running. ShadowQA Live is the product's autonomous fixer for that. A browser SDK (or a
+Chrome extension that injects it into localhost pages) records clicks, requests, console output and
+exceptions. A Python bridge joins the failing click, the request it caused and the exception it
+produced into one incident, maps minified frames back to source, and asks Claude (GPT as the
+fallback) for a root cause and a minimal patch. The patch is graded LOW / MEDIUM / HIGH by
+deterministic rules; the project's automation mode decides whether it waits. Behind a Git
+checkpoint the workspace's linters and tests run, then the recorded interaction is replayed against
+the running app; a failed replay rolls back automatically, and a passing one becomes a pull request.
+
+**One product.** Live is not a second tool. It starts from the ShadowQA CLI (`shadowqa live start`),
+reads the project's mode from the service, reports every incident as a finding
+(`detector: "live"`) so it appears beside check failures in `shadowqa findings`, and takes
+`approve` / `undo` / `pr` / `dismiss` from the same CLI. `shadowqa repair` on a Live finding
+delegates to the bridge under the same mode rules. Planning stays on Gemini; Live's diagnosis is
+Anthropic first and OpenAI second because that is what its detector was built and tuned on.
+
+The brand was redone at the same time so that the CLI, the extensions, the Live overlay, the film
+and the deck read as one thing: charcoal and off-white only, red for wrong and green for right,
+Work Sans and Source Serif Pro. See `docs/BRAND.md`.

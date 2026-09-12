@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
-const id = process.argv[2] ?? "ShadowQA-Business";
+const id = process.argv[2] ?? "ShadowQA";
 const outDir = path.join(root, "out", "stills", id);
 
 await import("./extract.mjs");

@@ -1,20 +1,17 @@
-import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
-import { loadFont as loadMono } from "@remotion/google-fonts/JetBrainsMono";
+import { loadFont as loadWorkSans } from "@remotion/google-fonts/WorkSans";
+import { loadFont as loadSourceSerif } from "@remotion/google-fonts/SourceSerif4";
 
-// Loaded once at module scope so every composition shares the same faces and no scene
-// renders a frame with a fallback metric.
-const inter = loadInter("normal", {
-  weights: ["400", "500", "600", "700", "800"],
+// Loaded once at module scope so every frame renders with the real faces. Source Serif Pro is
+// published on Google Fonts as "Source Serif 4"; it is the same design.
+const sans = loadWorkSans("normal", {
+  weights: ["300", "400", "500", "600"],
   subsets: ["latin"],
 });
-const mono = loadMono("normal", {
-  weights: ["400", "500", "700"],
+const serif = loadSourceSerif("normal", {
+  weights: ["400", "600"],
   subsets: ["latin"],
 });
 
-export const display = `${inter.fontFamily}, -apple-system, "Segoe UI", sans-serif`;
-export const code = `${mono.fontFamily}, "SFMono-Regular", Consolas, monospace`;
-export const fontsReady = Promise.all([
-  inter.waitUntilDone(),
-  mono.waitUntilDone(),
-]);
+export const sansFamily = `${sans.fontFamily}, -apple-system, "Segoe UI", sans-serif`;
+export const serifFamily = `${serif.fontFamily}, "Source Serif Pro", Georgia, serif`;
+export const fontsReady = Promise.all([sans.waitUntilDone(), serif.waitUntilDone()]);

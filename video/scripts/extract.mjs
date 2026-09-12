@@ -21,7 +21,7 @@ const snippets = [
     key: "brand",
     file: "src/cli/ui.ts",
     anchor: /^export const BRAND/,
-    lines: 5,
+    lines: 6,
     lang: "typescript",
   },
   {
@@ -211,6 +211,42 @@ const optionalSnippets = [
     anchor: /"permissions"/,
     lines: 9,
     lang: "json",
+  },
+  // ShadowQA Live — the runtime half of the product.
+  {
+    key: "modeToAutonomy",
+    file: "live/backend/shadowqa/config.py",
+    anchor: /^MODE_TO_AUTONOMY = \{/,
+    lines: 6,
+    lang: "python",
+  },
+  {
+    key: "sensitivePaths",
+    file: "live/backend/shadowqa/risk.py",
+    anchor: /^SENSITIVE_PATH = \[/,
+    lines: 6,
+    lang: "python",
+  },
+  {
+    key: "liveRepair",
+    file: "src/qa/repair.ts",
+    anchor: /^  if \(isLiveFinding\(existing\)\) \{/,
+    lines: 8,
+    lang: "typescript",
+  },
+  {
+    key: "liveRoutes",
+    file: "src/live/bridge.ts",
+    anchor: /^ \*   GET  \/live\/policy\/:project/,
+    lines: 5,
+    lang: "typescript",
+  },
+  {
+    key: "liveProviders",
+    file: "live/backend/shadowqa/config.py",
+    anchor: /self\.primary_model = os\.environ\.get/,
+    lines: 2,
+    lang: "python",
   },
 ];
 

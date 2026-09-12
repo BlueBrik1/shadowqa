@@ -17,3 +17,14 @@ video/src/generated/
 
 # individual/extension/dist is deliberately NOT ignored: the built, load-unpacked-ready
 # extension ships with the repository. Rebuild it with `npm run build:extension:individual`.
+
+# ShadowQA Live
+live/backend/.venv/
+**/__pycache__/
+**/.pytest_cache/
+live/frontend/node_modules/
+live/frontend/build/
+live/.shadowqa/
+
+# The film and the deck are tracked deliberately: deliverables/shadowqa.mp4, deliverables/shadowqa-slides.pdf
+!deliverables/

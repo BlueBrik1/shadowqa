@@ -2,13 +2,12 @@
   "name": "shadowqa-video",
   "version": "0.1.0",
   "private": true,
-  "description": "Remotion launch and explainer videos for ShadowQA Business and ShadowQA Individual.",
+  "description": "Remotion film and slide deck for ShadowQA.",
   "scripts": {
     "extract": "node scripts/extract.mjs",
     "studio": "npm run extract && remotion studio",
     "render": "npm run extract && node scripts/render.mjs",
-    "render:business": "npm run extract && remotion render src/index.ts ShadowQA-Business out/shadowqa-business.mp4",
-    "render:individual": "npm run extract && remotion render src/index.ts ShadowQA-Individual out/shadowqa-individual.mp4",
+    "slides": "node scripts/slides.mjs",
     "still": "npm run extract && node scripts/stills.mjs",
     "typecheck": "tsc --noEmit"
   },

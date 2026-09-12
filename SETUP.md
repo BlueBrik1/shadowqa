@@ -9,10 +9,12 @@ ShadowQA ships in two editions from one codebase:
 | -------------------------------------- | ----------------------------------- | ------------------------------------------- | -------------------------------------- |
 | **Team** (`shadowqa`)                  | Slack + GitHub                      | OpenCode in network-disabled Docker         | Parts 1–9 below                        |
 | **Individual** (`shadowqa-individual`) | ChatGPT, Claude, Claude Code, Codex | OpenCode, Claude Code or Codex, your choice | [Part B](#part-b--shadowqa-individual) |
+| **Live** (`shadowqa live`, both editions) | Your running web app on localhost | The Live bridge patches your workspace behind a Git checkpoint | [Part C](#part-c--shadowqa-live) |
 
 
-Both use Gemini for planning, the same PostgreSQL schema, the same policy gates and the same
-independent verification. Their data is kept in separate tenants.
+Both editions use Gemini for planning, the same PostgreSQL schema, the same policy gates and the same
+independent verification. Their data is kept in separate tenants. Live uses Anthropic (with OpenAI as
+the fallback) for runtime diagnosis and is governed by the same automation modes.
 
 ## 1. Try the offline demo
 
@@ -477,3 +479,114 @@ shadowqa-individual doctor
 ```
 
 checks Node, the Gemini key, all three backends, the native messaging host and the service.
+---
+
+# Part C — ShadowQA Live
+
+Live watches a web application while it runs on your machine and turns a runtime failure into a
+diagnosed, risk-graded, replay-verified fix. It is one command in either edition and is governed by
+the project's automation mode.
+
+## C1. Prerequisites
+
+- Python 3.11 or newer on `PATH` (`python --version`). `shadowqa live start` creates
+  `live/backend/.venv` and installs `live/backend/requirements.txt` on first run.
+- An Anthropic key (`ANTHROPIC_API_KEY`) for diagnosis; an OpenAI key (`OPENAI_API_KEY`) as the
+  fallback. Either alone works. A Gemini key adds an optional third provider. Without any key, Live
+  still captures and correlates incidents but cannot diagnose them, and says so.
+- Git in the workspace you want it to patch. Live creates a checkpoint before every write and rolls
+  back to it when validation or replay fails.
+- Optional: `MONGO_URL` for a shared store. Without it, Live keeps its state in
+  `.shadowqa/live/` as JSON.
+
+Put the keys in the repository `.env` (the team edition) or your shell (`$env:ANTHROPIC_API_KEY`).
+`shadowqa doctor` and `shadowqa-individual doctor` report the Live keys and the Python interpreter.
+
+## C2. Describe the application
+
+`live/shadowqa.workspace.json` names the workspace root (relative to the file), the frontend and
+backend directories, what Live may read, what it may write, what it must never touch, how minified
+frames map back to source, and the patch limits. The shipped file describes the demo storefront; copy
+it next to your own application and point `--workspace` at it:
+
+```json
+{
+  "name": "My app",
+  "root": ".",
+  "frontend_dir": "frontend",
+  "backend_dir": "backend",
+  "read_roots": ["frontend/src", "backend/app"],
+  "write_roots": ["frontend/src", "backend/app"],
+  "deny": ["frontend/.env", "backend/.env", "backend/app/auth"],
+  "source_map": { "strip_prefixes": ["webpack:///./"], "map_to": "frontend" },
+  "limits": { "max_files_per_patch": 3, "max_changed_lines": 120, "max_file_read_bytes": 200000 },
+  "git": { "branch_prefix": "shadowqa/fix-" }
+}
+```
+
+Validation uses the linters and tests the workspace already has (ESLint and the frontend test runner
+under `frontend_dir`, pyflakes and pytest under `backend_dir`); `deny` paths are refused even when a
+patch names them, and a patch over the limits is graded HIGH.
+
+## C3. Start the bridge
+
+Team edition, linked to a project so the project's mode governs Live:
+
+```powershell
+shadowqa live start --project my-project --workspace .\path\to\shadowqa.workspace.json
+```
+
+Individual edition (the project's mode is read from the local service and mapped to Live's levels):
+
+```powershell
+shadowqa-individual live start --project my-project --workspace .\path\to\shadowqa.workspace.json
+```
+
+Without `--project`, Live runs unlinked with `--autonomy observe | approve_all | auto_low`
+(default `approve_all`). `--demo` also serves the Lumen Supply Co. demo store so the loop can be
+tried without your own app. The bridge listens on `http://127.0.0.1:8001`; its token is written to
+`live/.shadowqa/bridge-token` and is required by the SDK, the extension and the CLI.
+
+| Project mode | Live autonomy | Meaning |
+| --- | --- | --- |
+| `observe` | `observe` | Diagnose only. Nothing is written. |
+| `approval` | `approve_all` | Every patch waits for `shadowqa live approve <incident>`. |
+| `auto-fix` | `auto_low` | LOW-risk patches apply on their own, then validate and replay. |
+| `full-auto` | `auto_low` | Same restricted scope; merging stays with the service's merge policy. |
+
+## C4. Put the SDK in the page
+
+```powershell
+shadowqa live snippet
+```
+
+prints a `<script src="http://127.0.0.1:8001/shadowqa.js" data-bridge-url=… data-token=…>` tag. Paste
+it into the page you are developing, or load `live/extension/` unpacked in Chrome
+(`chrome://extensions` → *Load unpacked*) and enter the bridge URL and token in its options page; the
+extension injects the same SDK into localhost pages. The SDK records clicks, requests, console output
+and exceptions; it does not send anything to a non-localhost origin.
+
+## C5. The loop
+
+1. Use the app. When an interaction fails, the overlay marks it and the bridge joins the click, the
+   request it caused and the exception into one incident.
+2. `shadowqa live incidents` lists them; `shadowqa live incident <id>` shows the chain, the root
+   cause, the proposed patch, its risk grade and the current state. The same incidents appear in
+   `shadowqa findings` with the ◉ glyph.
+3. `shadowqa live approve <id>` (or `shadowqa repair <id>`) applies the patch behind a checkpoint,
+   runs the workspace's linters and tests, then replays the recorded interaction against the running
+   app. A failed replay rolls back automatically.
+4. `shadowqa live pr <id>` pushes a branch and requests the pull request; `shadowqa live undo <id>`
+   rolls back; `shadowqa live dismiss <id>` closes the incident.
+
+## C6. Troubleshooting
+
+| Symptom | Action |
+| --- | --- |
+| `LIVE_MISSING` | The `live/` directory is not in this checkout. |
+| `PIP` | `pip install -r live/backend/requirements.txt` failed; run it in `live/backend` to see the error. |
+| Health shows `linked: false` while `--project` was given | The ShadowQA service is not reachable at `SHADOWQA_URL`; Live keeps its last policy and never widens it. |
+| Incidents are captured but stay `captured` | No `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`. |
+| `policy.write_blocked` in the audit | The project is in `observe`; change the mode with `shadowqa project mode <project> approval`. |
+| Settings PUT returns 409 | Autonomy is governed by the linked project; change the project's mode instead. |
+| `replay_failed` | The app could not be brought back to the recorded state, or the fix did not hold. The workspace has been rolled back; read `shadowqa live incident <id>`. |
