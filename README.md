@@ -1,4 +1,4 @@
-# ◈ ShadowQA
+# ◈ ShadowQA - https://youtu.be/M6zUsrPB5HA
 
 **Team edition — Slack and GitHub context → Gemini plan → approval → isolated OpenCode session → independent checks → repair PR.**
 
