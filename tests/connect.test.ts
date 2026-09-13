@@ -1,75 +1,22 @@
 import { describe, expect, test } from "vitest";
-import { mkdtemp, writeFile, mkdir } from "node:fs/promises";
+import { mkdtemp, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
-  mergeEnv,
-  missingProjectSteps,
   verifySlack,
   verifyGithub,
   githubRepositories,
   verifyClone,
   MODE_HELP,
-  STEPS,
-} from "../src/cli/setup.js";
+} from "../src/core/connect.js";
 import { Mode } from "../src/core/contracts.js";
 import { git, run } from "../src/runner/process.js";
 
-describe("environment merging", () => {
-  test("known keys are rewritten in place and comments survive", () => {
-    const before = [
-      "# Copy to .env",
-      "DATABASE_URL=postgresql://old",
-      "",
-      "# Slack",
-      "SLACK_BOT_TOKEN=",
-      "GEMINI_MODEL=gemini-2.5-flash",
-    ].join("\n");
-    const after = mergeEnv(before, {
-      SLACK_BOT_TOKEN: "xoxb-new",
-      GITHUB_APP_ID: "123456",
-    });
-    expect(after).toContain("# Copy to .env");
-    expect(after).toContain("# Slack");
-    expect(after).toContain("DATABASE_URL=postgresql://old");
-    expect(after).toContain("SLACK_BOT_TOKEN=xoxb-new");
-    expect(after).toContain("GEMINI_MODEL=gemini-2.5-flash");
-    // An unknown key is appended rather than dropped.
-    expect(after.trimEnd().endsWith("GITHUB_APP_ID=123456")).toBe(true);
-    // A key is never duplicated.
-    expect(after.match(/SLACK_BOT_TOKEN=/g)).toHaveLength(1);
-  });
-
-  test("a value containing '=' is preserved whole", () => {
-    expect(mergeEnv("KEY=old", { KEY: "a=b=c" })).toContain("KEY=a=b=c");
-  });
-});
-
-describe("partial setup", () => {
-  test("running one step names the steps still required instead of failing a schema", () => {
-    expect(missingProjectSteps({})).toEqual(["github", "mode", "project"]);
-    expect(missingProjectSteps({ repository: { githubId: 1 } })).toEqual([
-      "mode",
-      "project",
-    ]);
-    expect(
-      missingProjectSteps({
-        repository: { githubId: 1 },
-        policy: { mode: "approval" },
-        id: "p",
-        profile: {},
-      }),
-    ).toEqual([]);
-  });
-
+describe("connect helpers", () => {
   test("every documented mode is a real mode in the contract", () => {
     for (const mode of Object.keys(MODE_HELP))
       expect(() => Mode.parse(mode)).not.toThrow();
     expect(Object.keys(MODE_HELP)).toHaveLength(Mode.options.length);
-  });
-
-  test("the step list matches what the CLI offers", () => {
-    expect([...STEPS]).toEqual(["slack", "github", "mode", "project"]);
   });
 });
 
@@ -81,15 +28,10 @@ describe("live verification", () => {
   });
 
   test("GitHub App credentials that are refused produce a clear error", async () => {
-    const dir = await mkdtemp(path.join(tmpdir(), "shadowqa-key-"));
-    const key = path.join(dir, "app.pem");
     // A real RSA key so the JWT is signed; the fetch is stubbed, so nothing leaves the machine.
     const { generateKeyPairSync } = await import("node:crypto");
     const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
-    await writeFile(
-      key,
-      privateKey.export({ type: "pkcs1", format: "pem" }) as string,
-    );
+    const key = privateKey.export({ type: "pkcs1", format: "pem" }) as string;
     const fetcher = (async () =>
       new Response("nope", { status: 401 })) as unknown as typeof fetch;
     await expect(verifyGithub("123", key, fetcher)).rejects.toThrow(

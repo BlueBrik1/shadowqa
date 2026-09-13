@@ -1,25 +1,31 @@
 import chokidar from "chokidar";
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  writeFile,
-  lstat,
-  realpath,
-} from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile, lstat, realpath } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import type { Project } from "../core/contracts.js";
 import { contained, excluded, hash, sanitize } from "../core/security.js";
-import { Sandbox } from "../runner/sandbox.js";
-import { git } from "../runner/process.js";
-import { line, success } from "./ui.js";
-export async function watch(project: Project, folder: string) {
+import { Sandbox } from "./sandbox.js";
+import { git } from "./process.js";
+
+export type WatchEvent =
+  | { kind: "snapshot"; digest: string; stale: boolean }
+  | { kind: "result"; id: string; exitCode: number; output: string }
+  | { kind: "error"; message: string }
+  | { kind: "started"; root: string };
+
+/**
+ * Team edition's saved-file watcher: debounced, snapshot-isolated, checked in the same
+ * network-disabled Docker sandbox as a real job — distinct from the individual edition's
+ * `individual/core/qa.ts` watcher, which runs checks directly under the developer's own
+ * permissions instead of a container.
+ */
+export async function watchSavedFiles(
+  project: Project,
+  folder: string,
+  onEvent: (event: WatchEvent) => void,
+) {
   const root = await realpath(folder);
-  const sandbox = new Sandbox(
-    `shadowqa-watch-${hash(root).slice(0, 12)}`,
-    project.profile,
-  );
+  const sandbox = new Sandbox(`shadowqa-watch-${hash(root).slice(0, 12)}`, project.profile);
   await sandbox.doctor();
   let timer: ReturnType<typeof setTimeout> | undefined,
     running = false,
@@ -28,10 +34,7 @@ export async function watch(project: Project, folder: string) {
   const controller = new AbortController();
   const watcher = chokidar.watch(root, {
     ignoreInitial: true,
-    ignored: (p) => {
-      const rel = path.relative(root, p).replaceAll("\\", "/");
-      return excluded(rel);
-    },
+    ignored: (p) => excluded(path.relative(root, p).replaceAll("\\", "/")),
     awaitWriteFinish: { stabilityThreshold: 1000, pollInterval: 200 },
   });
   const scan = async () => {
@@ -40,15 +43,8 @@ export async function watch(project: Project, folder: string) {
     const version = generation;
     try {
       const snapshot = await mkdtemp(path.join(tmpdir(), "shadowqa-saved-"));
-      // Enumerate tracked + nonignored saved files. Copy bytes, never execute the original folder.
       const files = (
-        await git(root, [
-          "ls-files",
-          "--cached",
-          "--others",
-          "--exclude-standard",
-          "-z",
-        ])
+        await git(root, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"])
       )
         .split("\0")
         .filter((p) => p && !excluded(p));
@@ -76,37 +72,24 @@ export async function watch(project: Project, folder: string) {
       const digest = hash(hashes);
       const results = await sandbox.checks(snapshot, controller.signal);
       let stale = version !== generation;
-      for (const [file, digest] of Object.entries(hashes)) {
+      for (const [file, fileDigest] of Object.entries(hashes)) {
         try {
-          if (
-            hash(
-              (await readFile(await contained(root, file))).toString("base64"),
-            ) !== digest
-          )
+          if (hash((await readFile(await contained(root, file))).toString("base64")) !== fileDigest)
             stale = true;
         } catch {
           stale = true;
         }
       }
-      line(stale ? "STALE SNAPSHOT" : "SAVED SNAPSHOT", digest.slice(0, 12));
-      for (const result of results) {
-        line(result.exitCode === 0 ? "PASS" : "FINDING", result.id);
-        if (result.exitCode !== 0) console.log(sanitize(result.output));
-      }
-      const report = {
-        projectId: project.id,
-        snapshot: digest,
-        stale,
-        results,
-        time: new Date().toISOString(),
-      };
+      onEvent({ kind: "snapshot", digest: digest.slice(0, 12), stale });
+      for (const result of results)
+        onEvent({ kind: "result", id: result.id, exitCode: result.exitCode, output: sanitize(result.output) });
       await mkdir(path.join(root, ".shadowqa"), { recursive: true });
       await writeFile(
         path.join(root, ".shadowqa", "diagnostics.json"),
-        JSON.stringify(report, null, 2),
+        JSON.stringify({ projectId: project.id, snapshot: digest, stale, results, time: new Date().toISOString() }, null, 2),
       );
     } catch (e) {
-      line("SCAN ERROR", String(e));
+      onEvent({ kind: "error", message: String(e) });
     } finally {
       running = false;
       if (generation !== version && !closed) timer = setTimeout(scan, 8000);
@@ -118,17 +101,15 @@ export async function watch(project: Project, folder: string) {
     clearTimeout(timer);
     timer = setTimeout(scan, 8000);
   });
-  const stop = async () => {
-    closed = true;
-    controller.abort();
-    clearTimeout(timer);
-    await watcher.close();
-    await sandbox.stop();
-  };
-  process.once("SIGINT", () => void stop());
-  process.once("SIGTERM", () => void stop());
-  success(
-    `Watching saved files in ${root}. Checks run after 8 seconds of inactivity. Ctrl+C stops.`,
-  );
+  onEvent({ kind: "started", root });
   await scan();
+  return {
+    async stop() {
+      closed = true;
+      controller.abort();
+      clearTimeout(timer);
+      await watcher.close();
+      await sandbox.stop();
+    },
+  };
 }

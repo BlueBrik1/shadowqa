@@ -111,3 +111,45 @@ apply to `fixtures/duplicate-submit` and verify with a real test process.
 Numbers in the films that are illustrative rather than measured — source counts, turn counts,
 timings for a fictional `payments-ui` project — are demonstration data for a fictional project, in
 the same way the fixture repository is.
+
+## 2026-09-12 — the CLI replaced by a desktop app
+
+`src/cli/` and `individual/cli/` were deleted; `desktop/` (Electron + React) is now the interface for
+both editions. What follows is what was actually run against the new code, on the same Windows 11
+machine, Node 22.13.1 / npm 10.9.2. Not available in this environment: a real GitHub App, a Slack
+workspace, a PostgreSQL server, Docker, and a Gemini/Anthropic/OpenAI key.
+
+### Verified
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Type safety, whole repo | `npm run typecheck` | Clean across the root, the VS Code extension, `individual`, the browser extension, and both desktop processes (`tsconfig.desktop.json`, `desktop/renderer/tsconfig.json`). |
+| Unit and integration suites | `npm test` | 13 files, 129 tests, all passing — including `tests/connect.test.ts` (renamed from `tests/setup.test.ts`, now covering `src/core/connect.ts`), unchanged otherwise. |
+| Renderer build | `npm run desktop:build` | Vite bundles 50 modules into `desktop/renderer/dist/`; the Electron main/preload process compiles into `dist-desktop/`. |
+| **Solo edition, end to end, for real** | Launch `dist-desktop/desktop/electron/main.js`, then `curl http://127.0.0.1:4390/health` and `/backends` | The Electron main process actually booted `individual/service/server.ts`'s `createService()` in-process against the embedded PGlite database and answered real HTTP requests: `{"ok":true,"product":"shadowqa-individual","database":"embedded postgresql (pglite)", ...}`, and `/backends` correctly reported the same locally installed Claude Code 2.1.270 and Codex 0.131.0 this machine had before. Repeated after every subsequent change (Team screens, Live tab, saved-file watch, companion IPC, the CLI deletion itself) to confirm no regression; every run answered correctly. |
+| VS Code extension | `npm run build:extension` | Compiles clean after being rewired from `execFile`-ing the deleted CLI binary to plain `fetch` calls against the team API, with its token in VS Code's `SecretStorage` instead of a settings path. |
+
+### Not verified
+
+These are the desktop-app equivalent of the individual edition's pre-existing "not verified" rows
+above — stated as gaps, not claimed as working:
+
+| Area | Why not | What would verify it |
+| --- | --- | --- |
+| **The GitHub App Manifest connect flow, live** | No real GitHub account exercised the actual browser redirect and loopback callback in this environment. | Click Connect GitHub in the desktop app, complete the manifest form GitHub shows, and confirm the app returns with a working app id/key without any manual copying. |
+| **The Slack manifest-paste connect flow, live** | No real Slack workspace available. | Click Connect Slack, paste the manifest into Slack's UI, install, and confirm the two token fields validate live. |
+| **Team's shared service against real PostgreSQL** | No PostgreSQL server in this environment. | `docker compose up -d` (or the desktop app's own "start one with Docker" button), then the Team admin flow's "Start the shared service" step; confirm `/status`, plan generation and the challenge/nonce approval round-trip against a real database. |
+| **A registered runner executing a real job** | Depends on Docker and a real Postgres-backed service (both above). | Register a runner from the Admin tab, run `scripts/runner-map.ts` and `scripts/runner-start.ts` on a machine with Docker, approve a plan, and watch the job execute. |
+| **The Live tab starting the Python bridge** | No Python 3.11+ environment confirmed available here beyond what `src/live/local.ts` assumes. | Open the Live tab; confirm `live/backend/.venv` is created and the bridge answers `/health`. `src/live/local.ts` is a straight extraction of the CLI's own `startLive` (previously exercised — see the films' generation history) into a non-blocking start function; the extraction itself was only type-checked, not run. |
+| **Team's saved-file watcher from the Admin tab** | Needs Docker (the same sandbox `src/runner/sandbox.ts` uses) which is unavailable here. | Toggle "Watch saved files" on a mapped project with Docker running, edit a tracked file, and confirm a check result appears within 8 seconds. |
+| **`npx tsx scripts/serve-team.ts`, `runner-map.ts`, `runner-start.ts`** | No PostgreSQL/Docker in this environment (same gap as above). | Run each against a real deployment; they are direct extractions of the deleted CLI's `serve`/`runner map`/`runner start` command bodies, adjusted to be non-interactive, and were only type-checked. |
+
+### What stayed exactly the same
+
+Every business module the CLI used to call — `src/api/server.ts`, `src/scheduler/jobs.ts`,
+`src/policy/engine.ts`, `src/planner/planner.ts`, `src/runner/runner.ts`, `individual/core/*`,
+`live/backend/*` — is untouched by this change; the full pre-existing test suite above still passes
+against it unmodified. The only genuinely new business logic is `src/core/connect.ts`'s
+`convertManifest` (the GitHub App Manifest code exchange, not previously part of the CLI) and
+`desktop/electron/loopback.ts` (the ephemeral OAuth-style callback listener) — both new, and neither
+exercised against a real GitHub App in this environment, per the table above.

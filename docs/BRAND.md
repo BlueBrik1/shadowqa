@@ -1,6 +1,6 @@
 # ShadowQA brand
 
-One product, one look, everywhere it appears: the CLI, the VS Code extension, the browser side
+One product, one look, everywhere it appears: the desktop app, the VS Code extension, the browser side
 panel, the Live overlay and extension, the film and the slide deck.
 
 ## Palette
@@ -32,9 +32,9 @@ Code blocks keep syntax highlighting (Prism tokens tuned for each background). N
 shadows that imply a third colour, no brand colours from partners — Slack, GitHub, Claude, OpenAI,
 Gemini, OpenCode and Codex marks are drawn in the current ink colour at their official geometry.
 
-The palette is defined once in code as `BRAND` in `src/cli/ui.ts`; the film reads it from there at
-build time (`video/scripts/extract.mjs`) and the Live front end mirrors it in
-`live/frontend/src/index.css`.
+The palette is defined once in code as `BRAND` in `src/core/brand.ts`; the desktop app's renderer
+theme, the film (`video/scripts/extract.mjs`) and the Live front end (`live/frontend/src/index.css`)
+all read or mirror it from there.
 
 ## Type
 
@@ -51,8 +51,8 @@ Source Serif with tight leading (1.12). There is no "techy" display face.
 
 The mark is a diamond with a filled centre: `◈` in text, and the SVG in `vscode-extension/media/shadow.svg`
 and `video/src/film/ui.tsx` (`Mark`). It stands for a finding that has been looked into. Related
-glyphs used in the CLI and film: `◇` a step or a check, `◉` a Live incident, `◌` waiting, `✓` good,
-`✕` bad.
+glyphs (`GLYPH` in `src/core/brand.ts`) used across the desktop app and film: `◇` a step or a check,
+`◉` a Live incident, `◌` waiting, `✓` good, `✕` bad.
 
 The wordmark is `SHADOWQA` in Work Sans 500, tracked at 0.3 em, with the mark at the left. The tagline
 is `observe → plan → verify → repair`.
@@ -60,7 +60,7 @@ is `observe → plan → verify → repair`.
 ## Layout rules (film and slides)
 
 - One sentence and one visual per beat; the sentence at the top, the visual centred below.
-- Windows (terminal, browser, IDE, Slack, pull request) are drawn in the opposite tone to the frame so
+- Windows (the desktop app, browser, IDE, Slack, pull request) are drawn in the opposite tone to the frame so
   they read as objects, not decoration.
 - Cuts are 12-frame crossfades; entrances are short rises (22 px, soft easing); nothing bounces.
 - Chapter marks: `01 — THE PROBLEM`, `02 — FOR TEAMS`, `03 — FOR INDIVIDUALS`, `04 — LIVE`, `05 — BUILT IN`.

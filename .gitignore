@@ -12,6 +12,8 @@ coverage/
 vscode-extension/out/
 test-results/
 dist-individual/
+dist-desktop/
+desktop/renderer/dist/
 video/out/
 video/src/generated/
 

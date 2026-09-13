@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { AsyncEntry } from "@napi-rs/keyring";
 import type { Job, Plan, Project, CheckResult } from "../core/contracts.js";
 import { AppError, hash, sanitize, token } from "../core/security.js";
-import { Client } from "../cli/client.js";
+import { Client } from "../core/client.js";
 import { exportTree } from "./workspace.js";
 import { git, run } from "./process.js";
 import { inspect } from "../planner/inspect.js";

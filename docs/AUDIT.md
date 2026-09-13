@@ -219,3 +219,44 @@ port, no spawned service, eleven cases in about six seconds.
   permissions, and no `tabs` permission — the panel asks the content script for the page it is on.
 - Both films render deterministically: every animation is a pure function of the frame number, so
   the same frame always produces the same image.
+
+## Third pass — the CLI replaced by a desktop app (2026-09-12)
+
+Scope: `src/cli/` and `individual/cli/` deleted; `desktop/` added; every module that imported the
+deleted files fixed rather than left stubbed. Baseline: `npm run typecheck` and `npm test` (129
+passing) both clean after the deletion, `npm run desktop:build` clean, and a launched build of the
+desktop app answering real HTTP requests from its in-process Solo service (see
+`docs/VALIDATION.md`'s 2026-09-12 entry for the exact commands and results).
+
+### Fixed
+
+**Two modules quietly depended on the CLI they were about to lose.** `src/runner/runner.ts`
+imported `Client` from `src/cli/client.ts` — the runner's own transport to the team API, not
+CLI-specific at all — and `tests/setup.test.ts` imported `verifySlack`/`verifyGithub`/`verifyClone`/
+`MODE_HELP` from `src/cli/setup.ts` for coverage that had nothing to do with a terminal. Found by
+`npm run typecheck` failing immediately after deletion (`Cannot find module '../cli/client.js'`) —
+not by reading the code first. Fixed by extracting the actually-reusable logic into
+`src/core/client.ts`, `src/core/connect.ts` and `src/core/bootstrap.ts` *before* deleting the CLI,
+and re-pointing both the runner and the test file (renamed `tests/connect.test.ts`) at the new
+location. The lesson generalizes: before deleting an interface layer, grep every file it exports
+from for importers outside that layer — `grep -rln "cli/client" --include="*.ts" .` is what caught
+the second one.
+
+**`scripts/code-reference.ts` would have crashed on the next `npm run docs:code`.** Its `roots` list
+named `individual/cli` unconditionally; `readdir` on a deleted directory throws rather than
+returning nothing. Found by tracing every reference to the deleted directories rather than only the
+ones the compiler caught (the generator script is `tsx`-run, not part of `npm run typecheck`, so it
+would have failed silently until someone ran it). Fixed: the entry removed, `desktop/electron` and
+`desktop/renderer/src` added instead so the generated reference covers the new code, and `.tsx` files
+are now walked and parsed with the right script kind (they were being skipped entirely before,
+independent of this change).
+
+### Accepted, and written down
+
+| Behaviour | Why it stands |
+| --- | --- |
+| The GitHub App Manifest and Slack manifest-paste connect flows are implemented but not exercised against a real GitHub App or Slack workspace in this environment | Both are direct, mostly mechanical translations of logic that *was* exercised historically (`verifyGithub`, `verifySlack`, `githubRepositories`, `verifyClone` are the CLI's own functions, moved unchanged into `src/core/connect.ts` and still covered by `tests/connect.test.ts`); the genuinely new pieces are the manifest-conversion API call and the loopback listener, neither of which has network access to a real GitHub/Slack account here. Stated in `docs/VALIDATION.md`, not implied to be proven. |
+| Slack's connect flow still needs one unavoidable manual paste (the Socket Mode app-level token) and, practically, a second paste for the bot token shown after Install | Slack has no API to create an app or mint an app-level token programmatically; only GitHub's App Manifest flow supports that. The plan approved before implementation named this explicitly rather than promising a fully automatic Slack connection and quietly falling short of it. |
+| The desktop app has no UI yet for `runner map`'s interactive review, personal GitHub/Slack identity linking (`POST /identity/:provider`), or `runner quarantine-clean` | All three are real, working capabilities — moved to `scripts/runner-map.ts` (review-and-consent kept intact, just non-interactive-by-flag instead of a terminal prompt) or left reachable directly via `curl`/the API (identity linking; quarantine-clean is a `docker rm -f` a runner operator runs by hand) — rather than silently dropped. `SETUP.md` documents the direct-API path for identity linking and names quarantine-clean's replacement command explicitly, so an operator is not left guessing. |
+| The Live tab's bridge-starting code (`src/live/local.ts`) is a straight extraction of the CLI's `startLive`, changed only to return once the process is spawned instead of blocking until it exits | Extracting rather than rewriting kept the actual `uvicorn` invocation, environment variables and venv bootstrap byte-for-byte identical to the version the films and `docs/VALIDATION.md`'s prior passes already exercised; only the "wait for exit vs. return a handle" control flow is new, and that half is what a manual Live-tab launch would verify. |
+| `src/runner/watch.ts` (Team's saved-file watcher, extracted from the deleted `src/cli/watch.ts`) has a minimal desktop UI — a single toggle button, no live diagnostic stream in the Admin tab beyond what the IPC layer buffers | The full check/snapshot/sandbox logic is unchanged from the CLI version; what's thin is the *display* of its output, which still writes `.shadowqa/diagnostics.json` the same way, so VS Code's Problems panel (via the existing file watcher in `vscode-extension/src/extension.ts`) shows results even where the desktop app's own UI is sparse. |

@@ -10,10 +10,11 @@ import { hash } from "../src/core/security.js";
 import { git, run } from "../src/runner/process.js";
 import { exportTree } from "../src/runner/workspace.js";
 import { fixture } from "./fixture.js";
-import { banner, line, success } from "../src/cli/ui.js";
+const line = (label: string, value: unknown) => console.log(`  ${label}: ${value}`);
+const success = (text: string) => console.log(`  ✓ ${text}`);
 const db = await testDb();
 try {
-  banner();
+  console.log("◈ SHADOWQA DEMO\n");
   line(
     "DEMO",
     "Offline fixture: real PostgreSQL engine, Git snapshots and tests. Scripted model/patch; no external accounts.",

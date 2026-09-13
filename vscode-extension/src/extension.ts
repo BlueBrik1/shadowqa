@@ -1,6 +1,25 @@
 import * as vscode from "vscode";
-import { execFile } from "node:child_process";
+import { access } from "node:fs/promises";
+import { AsyncEntry } from "@napi-rs/keyring";
 import path from "node:path";
+
+/** Windows has no `opencode` on PATH — it needs the native binary the npm shim would otherwise
+ * resolve. Set SHADOWQA_OPENCODE_EXE to override. */
+async function opencodeExecutable(): Promise<string> {
+  if (process.env.SHADOWQA_OPENCODE_EXE) return process.env.SHADOWQA_OPENCODE_EXE;
+  if (process.platform !== "win32") return "opencode";
+  const base = path.join(process.env.APPDATA ?? "", "npm", "node_modules");
+  for (const file of [
+    path.join(base, "opencode-ai", "node_modules", "opencode-windows-x64", "bin", "opencode.exe"),
+    path.join(base, "opencode-windows-x64", "bin", "opencode.exe"),
+  ]) {
+    try {
+      await access(file);
+      return file;
+    } catch {}
+  }
+  throw new Error("Set SHADOWQA_OPENCODE_EXE to the native opencode.exe installed by opencode-ai");
+}
 type Item = {
   label: string;
   description?: string;
@@ -10,71 +29,95 @@ type Item = {
   children?: Item[];
 };
 let channel: vscode.OutputChannel;
+let secrets: vscode.SecretStorage;
 const settings = () => vscode.workspace.getConfiguration("shadowqa");
-async function cliPath() {
-  let value = settings().get<string>("cliPath");
-  if (!value) {
-    const files = await vscode.window.showOpenDialog({
-      title: "Select ShadowQA dist/cli/main.js",
-      canSelectMany: false,
-      filters: { JavaScript: ["js"] },
-    });
-    if (!files?.[0]) throw new Error("Set shadowqa.cliPath to use ShadowQA");
-    value = files[0].fsPath;
-    await settings().update(
-      "cliPath",
-      value,
-      vscode.ConfigurationTarget.Global,
-    );
+const TOKEN_KEY = "shadowqa.token";
+
+async function token(force = false): Promise<string> {
+  if (!force) {
+    const existing = await secrets.get(TOKEN_KEY);
+    if (existing) return existing;
   }
-  return value;
+  const entered = await vscode.window.showInputBox({
+    title: "ShadowQA API token",
+    prompt: "A member or admin token for " + settings().get("serviceUrl"),
+    password: true,
+    ignoreFocusOut: true,
+  });
+  if (!entered) throw new Error("ShadowQA: no token entered");
+  await secrets.store(TOKEN_KEY, entered);
+  return entered;
 }
-async function call(args: string[]): Promise<any> {
-  const script = await cliPath();
-  return new Promise((resolve, reject) =>
-    execFile(
-      settings().get("nodePath", "node"),
-      [
-        script,
-        "--url",
-        settings().get("serviceUrl", "http://127.0.0.1:4380"),
-        "--json",
-        ...args,
-      ],
-      {
-        cwd: path.dirname(script),
-        windowsHide: true,
-        timeout: 250_000,
-        maxBuffer: 4_000_000,
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(stderr || error.message));
-          return;
-        }
-        try {
-          resolve(JSON.parse(stdout));
-        } catch {
-          reject(new Error("CLI returned an invalid response"));
-        }
-      },
-    ),
-  );
+
+/** The extension talks to the same REST API the desktop app and the old CLI used — a plain
+ * bearer-authenticated fetch, nothing shelled out. */
+async function call<T = any>(route: string, method = "GET", body?: unknown): Promise<T> {
+  const url = String(settings().get("serviceUrl", "http://127.0.0.1:4380"));
+  const run = async (bearer: string) =>
+    fetch(url + route, {
+      method,
+      headers: { Authorization: `Bearer ${bearer}`, "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(120_000),
+    });
+  let response = await run(await token());
+  if (response.status === 401) response = await run(await token(true));
+  const result: any = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.message ?? `HTTP ${response.status}`);
+  return result;
 }
-async function terminal(args: string[]) {
-  const script = await cliPath();
+
+async function approvePlan(planId: string, digest: string, decision: "approve" | "reject") {
+  const challenge = await call(`/plans/${planId}/challenge`, "POST", {});
+  return call(`/plans/${planId}/approvals`, "POST", {
+    approvalId: challenge.id,
+    nonce: challenge.nonce,
+    digest,
+    decision,
+  });
+}
+
+/** `attach`/`session`: the sandbox session binding never leaves the runner machine over the
+ * network — it lives in the OS keyring, exactly as the runner itself wrote it. */
+async function localSession(jobId: string) {
+  const raw = await new AsyncEntry("ShadowQA", `session:${jobId}`).getPassword();
+  if (!raw) throw new Error("No active session on this machine for that job.");
+  return JSON.parse(raw) as { url: string; sessionId: string; password: string };
+}
+
+async function attachTerminal(jobId: string) {
+  const info = await localSession(jobId);
+  const exe = await opencodeExecutable();
   const t = vscode.window.createTerminal({
-    name: "◈ ShadowQA",
-    shellPath: settings().get("nodePath", "node"),
+    name: "◈ ShadowQA session",
+    shellPath: exe,
+    shellArgs: ["attach", info.url, "--session", info.sessionId, "--dir", "/workspace"],
+    env: { OPENCODE_SERVER_PASSWORD: info.password },
+  });
+  t.show();
+}
+
+async function watchTerminal(projectId: string, folder: string) {
+  const script = path.resolve(__dirname, "..", "..", "scripts", "watch-project.ts");
+  const t = vscode.window.createTerminal({
+    name: "◈ ShadowQA watch",
+    shellPath: process.platform === "win32" ? "npx.cmd" : "npx",
     shellArgs: [
+      "tsx",
       script,
       "--url",
-      settings().get("serviceUrl", "http://127.0.0.1:4380"),
-      ...args,
+      String(settings().get("serviceUrl")),
+      "--token",
+      await token(),
+      "--project",
+      projectId,
+      "--folder",
+      folder,
     ],
   });
   t.show();
 }
+
 class Control implements vscode.TreeDataProvider<Item> {
   private emitter = new vscode.EventEmitter<Item | undefined>();
   readonly onDidChangeTreeData = this.emitter.event;
@@ -85,10 +128,10 @@ class Control implements vscode.TreeDataProvider<Item> {
     this.busy = true;
     try {
       const [status, plans, jobs, findings] = await Promise.all([
-        call(["status"]),
-        call(["plans"]),
-        call(["jobs"]),
-        call(["findings"]),
+        call("/status"),
+        call("/plans"),
+        call("/jobs"),
+        call("/findings"),
       ]);
       this.items = [
         {
@@ -100,11 +143,6 @@ class Control implements vscode.TreeDataProvider<Item> {
           label: "Compile context, generate plan",
           icon: "sparkle",
           command: "shadowqa.compile",
-        },
-        {
-          label: "Command center",
-          icon: "terminal",
-          command: "shadowqa.terminal",
         },
         {
           label: "Projects",
@@ -148,7 +186,7 @@ class Control implements vscode.TreeDataProvider<Item> {
               {
                 label: "Details and logs",
                 command: "shadowqa.details",
-                args: [["job", j.id]],
+                args: [["jobs", j.id]],
                 icon: "output",
               },
               {
@@ -182,14 +220,14 @@ class Control implements vscode.TreeDataProvider<Item> {
     } catch (e: any) {
       this.items = [
         {
-          label: "Setup / service unavailable",
+          label: "Not connected",
           description: e.message,
           icon: "warning",
         },
         {
-          label: "Open command center",
-          command: "shadowqa.terminal",
-          icon: "terminal",
+          label: "Set API token",
+          command: "shadowqa.setToken",
+          icon: "key",
         },
       ];
     } finally {
@@ -200,21 +238,12 @@ class Control implements vscode.TreeDataProvider<Item> {
   getTreeItem(item: Item) {
     const tree = new vscode.TreeItem(
       item.label,
-      item.children
-        ? vscode.TreeItemCollapsibleState.Collapsed
-        : vscode.TreeItemCollapsibleState.None,
+      item.children ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
     );
     tree.description = item.description;
-    tree.tooltip = item.description
-      ? `${item.label}\n${item.description}`
-      : item.label;
+    tree.tooltip = item.description ? `${item.label}\n${item.description}` : item.label;
     if (item.icon) tree.iconPath = new vscode.ThemeIcon(item.icon);
-    if (item.command)
-      tree.command = {
-        command: item.command,
-        title: item.label,
-        arguments: item.args,
-      };
+    if (item.command) tree.command = { command: item.command, title: item.label, arguments: item.args };
     return tree;
   }
   getChildren(item?: Item) {
@@ -223,7 +252,7 @@ class Control implements vscode.TreeDataProvider<Item> {
 }
 async function projectId(id?: string) {
   if (id) return id;
-  const projects = await call(["project", "list"]);
+  const projects = await call("/projects");
   return (
     await vscode.window.showQuickPick<vscode.QuickPickItem>(
       projects.map((p: any) => ({ label: p.id, description: p.name })),
@@ -233,11 +262,10 @@ async function projectId(id?: string) {
 }
 export function activate(context: vscode.ExtensionContext) {
   channel = vscode.window.createOutputChannel("ShadowQA");
+  secrets = context.secrets;
   context.subscriptions.push(channel);
   const control = new Control();
-  context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("shadowqa.control", control),
-  );
+  context.subscriptions.push(vscode.window.registerTreeDataProvider("shadowqa.control", control));
   const command = (name: string, fn: (...args: any[]) => Promise<unknown>) =>
     context.subscriptions.push(
       vscode.commands.registerCommand(name, async (...args: any[]) => {
@@ -249,7 +277,10 @@ export function activate(context: vscode.ExtensionContext) {
       }),
     );
   command("shadowqa.refresh", () => control.refresh());
-  command("shadowqa.terminal", () => terminal(["ui"]));
+  command("shadowqa.setToken", async () => {
+    await token(true);
+    await control.refresh();
+  });
   command("shadowqa.compile", async () => {
     const id = await projectId();
     if (!id) return;
@@ -259,12 +290,9 @@ export function activate(context: vscode.ExtensionContext) {
     });
     if (objective === undefined) return;
     await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: "ShadowQA is compiling context",
-      },
+      { location: vscode.ProgressLocation.Notification, title: "ShadowQA is compiling context" },
       async () => {
-        const plan = await call(["compile", id, "--objective", objective]);
+        const plan = await call(`/projects/${id}/compile`, "POST", { objective });
         await showJson(plan);
       },
     );
@@ -272,7 +300,7 @@ export function activate(context: vscode.ExtensionContext) {
   });
   command("shadowqa.approve", async (id?: string) => {
     if (!id) {
-      const plans = await call(["plans"]);
+      const plans = await call("/plans");
       id = (
         await vscode.window.showQuickPick<vscode.QuickPickItem>(
           plans.map((p: any) => ({ label: p.id, description: p.objective })),
@@ -281,65 +309,50 @@ export function activate(context: vscode.ExtensionContext) {
       )?.label;
     }
     if (!id) return;
-    const plan = await call(["plan", id]);
+    const plan = await call(`/plans/${id}`);
     await showJson(plan);
     const choice = await vscode.window.showInformationMessage(
       `Approve plan ${id.slice(0, 8)} at ${plan.baseSha.slice(0, 12)}?`,
       {
         modal: true,
-        detail: `${plan.objective}\nDigest: ${plan.digest}\nCommand profile: ${plan.profileId}\nFiles: ${plan.expectedPaths.join(", ")}`,
+        detail: `${plan.objective}\nDigest: ${plan.digest}\nFiles: ${plan.expectedPaths.join(", ")}`,
       },
       "Approve",
     );
-    if (choice === "Approve") await call(["approve", id, "--yes"]);
+    if (choice === "Approve") await approvePlan(id, plan.digest, "approve");
     await control.refresh();
   });
   command("shadowqa.attach", async (id?: string) => {
     if (!id) id = await vscode.window.showInputBox({ prompt: "Job ID" });
     if (!id) return;
-    const session = await call(["session", id]);
-    await terminal(["attach", id]);
-    if (
-      (await vscode.window.showInformationMessage(
-        "Open the isolated agent workspace in a new editor window?",
-        "Open workspace",
-      )) === "Open workspace"
-    )
-      await vscode.commands.executeCommand(
-        "vscode.openFolder",
-        vscode.Uri.file(session.workspace),
-        true,
-      );
+    await attachTerminal(id);
   });
   command("shadowqa.diff", async (id: string) => {
-    const artifact = await call(["diff", id]);
-    const doc = await vscode.workspace.openTextDocument({
-      content: artifact.diff,
-      language: "diff",
-    });
+    const artifacts = await call(`/jobs/${id}/artifacts`);
+    const diff = artifacts.find((a: any) => a.kind === "diff");
+    const doc = await vscode.workspace.openTextDocument({ content: diff?.content ?? "No diff yet.", language: "diff" });
     await vscode.window.showTextDocument(doc, { preview: false });
   });
   command("shadowqa.cancel", async (id: string) => {
-    await call(["cancel", id]);
+    await call(`/jobs/${id}/cancel`, "POST", {});
     await control.refresh();
   });
   command("shadowqa.pause", async () => {
-    await call(["pause"]);
+    await call("/control/kill", "POST", { enabled: true });
     await control.refresh();
   });
   command("shadowqa.resume", async () => {
-    await call(["resume"]);
+    await call("/control/kill", "POST", { enabled: false });
     await control.refresh();
   });
   command("shadowqa.mode", async (id?: string) => {
     id = await projectId(id);
     if (!id) return;
-    const mode = await vscode.window.showQuickPick(
-      ["observe", "approval", "auto-fix", "full-auto"],
-      { title: "Automation mode (invalidates existing approvals)" },
-    );
+    const mode = await vscode.window.showQuickPick(["observe", "approval", "auto-fix", "full-auto"], {
+      title: "Automation mode (invalidates existing approvals)",
+    });
     if (mode) {
-      await call(["project", "mode", id, mode]);
+      await call(`/projects/${id}/mode`, "POST", { mode });
       await control.refresh();
     }
   });
@@ -352,22 +365,15 @@ export function activate(context: vscode.ExtensionContext) {
       canSelectMany: false,
       title: "Consent to observing saved files in this folder",
     });
-    if (folder?.[0])
-      await terminal(["watch", id, "--folder", folder[0].fsPath]);
+    if (folder?.[0]) await watchTerminal(id, folder[0].fsPath);
   });
-  command("shadowqa.details", async (args: string[]) =>
-    showJson(await call(args)),
-  );
+  command("shadowqa.details", async (args: [string, ...string[]]) => showJson(await call("/" + args.join("/"))));
   const diagnostics = vscode.languages.createDiagnosticCollection("shadowqa");
   context.subscriptions.push(diagnostics);
-  const watcher = vscode.workspace.createFileSystemWatcher(
-    "**/.shadowqa/diagnostics.json",
-  );
+  const watcher = vscode.workspace.createFileSystemWatcher("**/.shadowqa/diagnostics.json");
   const refreshDiagnostics = async (uri: vscode.Uri) => {
     try {
-      const report = JSON.parse(
-        Buffer.from(await vscode.workspace.fs.readFile(uri)).toString(),
-      );
+      const report = JSON.parse(Buffer.from(await vscode.workspace.fs.readFile(uri)).toString());
       diagnostics.clear();
       if (report.stale) return;
       const root = vscode.Uri.file(path.dirname(path.dirname(uri.fsPath)));
@@ -375,21 +381,12 @@ export function activate(context: vscode.ExtensionContext) {
         if (result.exitCode === 0) continue;
         for (const line of String(result.output).split("\n")) {
           const m =
-            line.match(
-              /(?:\/workspace\/)?([\w./-]+\.[jt]sx?)\((\d+),(\d+)\):\s*(.*)/,
-            ) ||
-            line.match(
-              /(?:\/workspace\/)?([\w./-]+\.[jt]sx?):(\d+):(\d+)\s*(.*)/,
-            );
+            line.match(/(?:\/workspace\/)?([\w./-]+\.[jt]sx?)\((\d+),(\d+)\):\s*(.*)/) ||
+            line.match(/(?:\/workspace\/)?([\w./-]+\.[jt]sx?):(\d+):(\d+)\s*(.*)/);
           if (!m || m[1].includes("..") || path.isAbsolute(m[1])) continue;
           const file = vscode.Uri.joinPath(root, m[1]),
             d = new vscode.Diagnostic(
-              new vscode.Range(
-                Math.max(0, +m[2] - 1),
-                Math.max(0, +m[3] - 1),
-                Math.max(0, +m[2] - 1),
-                Math.max(0, +m[3]),
-              ),
+              new vscode.Range(Math.max(0, +m[2] - 1), Math.max(0, +m[3] - 1), Math.max(0, +m[2] - 1), Math.max(0, +m[3])),
               m[4] || result.id,
               vscode.DiagnosticSeverity.Warning,
             );
@@ -399,28 +396,18 @@ export function activate(context: vscode.ExtensionContext) {
       }
     } catch {}
   };
-  context.subscriptions.push(
-    watcher,
-    watcher.onDidCreate(refreshDiagnostics),
-    watcher.onDidChange(refreshDiagnostics),
-  );
+  context.subscriptions.push(watcher, watcher.onDidCreate(refreshDiagnostics), watcher.onDidChange(refreshDiagnostics));
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((doc) => {
       if (!doc.uri.fsPath.includes(".shadowqa")) diagnostics.clear();
     }),
   );
-  const timer = setInterval(
-    () => void control.refresh(),
-    settings().get<number>("refreshSeconds", 15) * 1000,
-  );
+  const timer = setInterval(() => void control.refresh(), settings().get<number>("refreshSeconds", 15) * 1000);
   context.subscriptions.push({ dispose: () => clearInterval(timer) });
   void control.refresh();
 }
 async function showJson(value: unknown) {
-  const doc = await vscode.workspace.openTextDocument({
-    content: JSON.stringify(value, null, 2),
-    language: "json",
-  });
+  const doc = await vscode.workspace.openTextDocument({ content: JSON.stringify(value, null, 2), language: "json" });
   await vscode.window.showTextDocument(doc, { preview: false });
 }
 export function deactivate() {}

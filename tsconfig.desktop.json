@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023", "DOM"],
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "outDir": "dist-desktop",
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true
+  },
+  "include": [
+    "desktop/electron/**/*.ts",
+    "individual/core/**/*.ts",
+    "individual/service/**/*.ts",
+    "individual/companion/**/*.ts",
+    "src/**/*.ts"
+  ]
+}

@@ -1,5 +1,5 @@
 import { AsyncEntry } from "@napi-rs/keyring";
-import { AppError, requireTransport } from "../core/security.js";
+import { AppError, requireTransport } from "./security.js";
 export const credentialKey = (url: string, kind = "user") =>
   new AsyncEntry("ShadowQA", `${kind}:${url}`);
 export async function credential(url: string, kind = "user") {
@@ -14,9 +14,11 @@ export async function credential(url: string, kind = "user") {
   } catch {}
   throw new AppError(
     "LOGIN_REQUIRED",
-    `No ${kind} credential. Run shadowqa login${kind === "runner" ? " --runner" : ""}.`,
+    `No ${kind} credential in OS credential storage for ${url}.`,
   );
 }
+/** The team API's REST transport: the same thin bearer-authenticated client the runner, the
+ * desktop app's team client and the old CLI all use against `src/api/server.ts`. */
 export class Client {
   constructor(
     public url = process.env.SHADOWQA_URL ?? "http://127.0.0.1:4380",

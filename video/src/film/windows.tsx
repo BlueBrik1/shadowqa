@@ -598,3 +598,114 @@ export const Cursor: React.FC<{ x: number; y: number; clickAt: number; from?: { 
     </div>
   );
 };
+
+/* ------------------------------------------------------------------------------------------ */
+/* DesktopApp — the actual product now: onboarding, watching, plans, jobs, findings, live.     */
+/* Same tab names and screen shapes as desktop/renderer/src/{App.tsx,pages/*}. No terminal.    */
+/* ------------------------------------------------------------------------------------------ */
+
+export const DESKTOP_TABS = ["Watching", "Plans", "Jobs", "Findings", "Live"] as const;
+
+export const DesktopApp: React.FC<{
+  tab?: (typeof DESKTOP_TABS)[number];
+  children: React.ReactNode;
+  width?: number;
+  height?: number;
+  delay?: number;
+}> = ({ tab, children, width = 1280, height = 760, delay = 0 }) => {
+  const dark = useToneName() === "dark";
+  const k = windowInk(dark);
+  return (
+    <Window width={width} height={height} delay={delay} title={<Row gap={8}><Mark size={15} color={dark ? c.dim : c.faint} />ShadowQA</Row>} bodyStyle={{ display: "flex", flexDirection: "column" }}>
+      {tab ? (
+        <div style={{ display: "flex", gap: 6, padding: "16px 32px 0" }}>
+          {DESKTOP_TABS.map((t) => (
+            <span
+              key={t}
+              style={{
+                padding: "9px 16px",
+                fontSize: 15,
+                fontFamily: sansFamily,
+                color: t === tab ? k.ink : k.faint,
+                borderBottom: `2px solid ${t === tab ? k.ink : "transparent"}`,
+              }}
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div style={{ flex: 1, padding: "28px 32px", overflow: "hidden", fontFamily: sansFamily, borderTop: tab ? `1px solid ${k.rule}` : undefined, marginTop: tab ? 0 : undefined }}>{children}</div>
+    </Window>
+  );
+};
+
+/** A rounded, bordered panel — the same visual unit every card on every screen uses. */
+export const AppCard: React.FC<{ children: React.ReactNode; delay?: number; style?: React.CSSProperties }> = ({ children, delay = 0, style }) => {
+  const dark = useToneName() === "dark";
+  const k = windowInk(dark);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const p = enter(frame, fps, delay, SOFT);
+  return (
+    <div
+      style={{
+        border: `1px solid ${k.rule}`,
+        borderRadius: 12,
+        padding: "20px 24px",
+        background: k.lift,
+        opacity: p,
+        transform: `translateY(${(1 - p) * 12}px)`,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+};
+
+/** The small pill used for a mode, a status, or a risk level — good/bad/neutral, nothing else. */
+export const AppBadge: React.FC<{ tone?: "good" | "bad" | "ink"; children: React.ReactNode }> = ({ tone: tn = "ink", children }) => {
+  const dark = useToneName() === "dark";
+  const k = windowInk(dark);
+  const colour = tn === "good" ? c.good : tn === "bad" ? c.bad : k.dim;
+  return (
+    <span style={{ display: "inline-block", padding: "3px 11px", borderRadius: 999, fontSize: 13, border: `1px solid ${colour}`, color: colour }}>
+      {children}
+    </span>
+  );
+};
+
+/** The off-white filled primary action button every screen uses for its one main action. */
+export const AppButton: React.FC<{ children: React.ReactNode; primary?: boolean; delay?: number }> = ({ children, primary = true, delay = 0 }) => {
+  const dark = useToneName() === "dark";
+  const k = windowInk(dark);
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const p = enter(frame, fps, delay, SOFT);
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "11px 20px",
+        borderRadius: 8,
+        fontSize: 15,
+        fontWeight: 600,
+        background: primary ? k.ink : "transparent",
+        color: primary ? (dark ? c.charcoal : c.offwhite) : k.ink,
+        border: primary ? "none" : `1px solid ${k.dim}`,
+        opacity: p,
+        transform: `translateY(${(1 - p) * 8}px)`,
+      }}
+    >
+      {children}
+    </span>
+  );
+};
+
+/** A labelled row of small text, the desktop app's `<Field>` / subtitle convention. */
+export const AppLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const dark = useToneName() === "dark";
+  const k = windowInk(dark);
+  return <div style={{ fontSize: 13, color: k.faint, marginBottom: 6 }}>{children}</div>;
+};

@@ -2,7 +2,7 @@ import React from "react";
 import { AbsoluteFill, useCurrentFrame } from "remotion";
 import { Beat, Statement } from "./beat";
 import { Row, Col, Between, Status, Label, Frame, Wordmark, Rise, Text } from "./ui";
-import { Terminal, KV, Browser, StoreCheckout, LiveCard, Cursor, Editor, Code } from "./windows";
+import { Browser, StoreCheckout, LiveCard, Cursor, Editor, Code, DesktopApp, AppCard, AppBadge } from "./windows";
 import { ClaudeMark, OpenAIMark, Brand } from "./marks";
 import { c } from "../theme";
 import { snippet } from "../generated/source";
@@ -11,7 +11,7 @@ import { serifFamily, sansFamily } from "../fonts";
 const CH = { index: "04", title: "Live" };
 
 export const LiveIntro: React.FC<{ duration: number }> = ({ duration }) => (
-  <Statement duration={duration} tone="light" text="Plans and checks cover the code. ShadowQA Live covers the running app." emphasis={["Live"]} size={68} sub="new · shadowqa live" />
+  <Statement duration={duration} tone="light" text="Plans and checks cover the code. ShadowQA Live covers the running app." emphasis={["Live"]} size={68} sub="new · the desktop app's Live tab" />
 );
 
 /* 24 Something breaks */
@@ -151,21 +151,35 @@ export const LiveOne: React.FC<{ duration: number }> = ({ duration }) => (
       { from: 110, text: "The project's mode decides what Live may do on its own. One product." },
     ]}
   >
-    <Terminal
-      width={1440}
-      height={520}
-      fontSize={19}
-      lines={[
-        { at: 4, cmd: "shadowqa findings" },
-        { at: 40, out: <span style={{ color: c.dim }}>{"     ID          PROJECT   RULE              STATE     CLASSIFICATION  SEEN"}</span> },
-        { at: 48, out: <span>  ◉  inc_3f9a     lumen     live:/checkout    <span style={{ color: c.good }}>resolved</span>  repaired        1</span> },
-        { at: 56, out: <span>  ◇  f_2a91c0     checkout  unit              open      reproduced      2</span> },
-        { at: 66, out: <span style={{ color: c.dim }}>{"\n"}  ◉ runtime incident from ShadowQA Live · ◇ check failure from a scan</span> },
-        { at: 120, cmd: "shadowqa live pr inc_3f9a" },
-        { at: 160, out: <span><span style={{ color: c.good }}>  ✓ </span>Branch pushed; PR requested.</span> },
-        { at: 172, out: <KV k="PR" v="github.com/acme/lumen/pull/88  ·  verified by replay · risk LOW" /> },
-      ]}
-    />
+    <DesktopApp width={1440} height={520} tab="Findings">
+      <Col gap={12}>
+        <Between from={20}>
+          <AppCard>
+            <Row gap={16} style={{ justifyContent: "space-between" }}>
+              <Row gap={14}><span>◉ lumen · live:/checkout</span><AppBadge tone="good">resolved</AppBadge></Row>
+              <span style={{ color: c.dim }}>repaired · seen 1×</span>
+            </Row>
+          </AppCard>
+        </Between>
+        <Between from={32}>
+          <AppCard>
+            <Row gap={16} style={{ justifyContent: "space-between" }}>
+              <Row gap={14}><span>◇ checkout · unit</span><AppBadge>reproduced</AppBadge></Row>
+              <span style={{ color: c.dim }}>seen 2×</span>
+            </Row>
+          </AppCard>
+        </Between>
+      </Col>
+      <Between from={60}>
+        <div style={{ color: c.dim, fontSize: 15, marginTop: 14 }}>◉ runtime incident from ShadowQA Live · ◇ check failure from a scan</div>
+      </Between>
+      <Between from={120}>
+        <Row gap={10} style={{ marginTop: 26 }}>
+          <span style={{ color: c.good }}>✓</span>
+          <span>Branch pushed; PR requested — github.com/acme/lumen/pull/88 · verified by replay · risk LOW</span>
+        </Row>
+      </Between>
+    </DesktopApp>
   </Beat>
 );
 
@@ -200,16 +214,18 @@ export const FeatureCited: React.FC<{ duration: number }> = ({ duration }) => (
   </Beat>
 );
 export const FeatureKill: React.FC<{ duration: number }> = ({ duration }) => (
-  <Beat duration={duration} chapter={F} sentence="And one command stops everything.">
-    <Terminal
-      width={1000}
-      height={300}
-      lines={[
-        { at: 4, cmd: "shadowqa pause" },
-        { at: 40, out: <span>{"{ \"enabled\": true }"}</span> },
-        { at: 56, out: <KV k="KILL SWITCH" v={<span style={{ color: c.bad }}>ON</span>} /> },
-      ]}
-    />
+  <Beat duration={duration} chapter={F} sentence="And one switch stops everything.">
+    <DesktopApp width={900} height={260}>
+      <AppCard delay={20}>
+        <Row gap={16} style={{ justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 17 }}>Workspace</div>
+            <span style={{ color: c.bad, fontSize: 15 }}>Paused — no new jobs will start.</span>
+          </div>
+          <AppBadge tone="bad">paused</AppBadge>
+        </Row>
+      </AppCard>
+    </DesktopApp>
   </Beat>
 );
 

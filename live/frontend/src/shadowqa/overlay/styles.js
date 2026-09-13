@@ -1,6 +1,6 @@
 /*
- * ShadowQA Live overlay. Charcoal and off-white only — the same two values the CLI prints
- * (src/cli/ui.ts). Red marks a failure, green a verified success. No gradients, no accent.
+ * ShadowQA Live overlay. Charcoal and off-white only — the same two values the desktop app is
+ * painted in (src/core/brand.ts). Red marks a failure, green a verified success. No gradients, no accent.
  * Work Sans is the interface voice, Source Serif Pro is the one line that speaks to the human.
  */
 export const STYLES = `

@@ -182,7 +182,7 @@ const Solution: React.FC = () => (
       <Node width={300} icon={<span>◈</span>} sub="What breaks later is reproduced and repaired under the same rules" strong>Repair</Node>
     </Row>
     <Text size={20} style={{ marginTop: 56, textAlign: "center" }}>
-      One CLI, one findings list, one set of automation modes — for the plan, for the checks, and for the running application.
+      One desktop app, one findings list, one set of automation modes — for the plan, for the checks, and for the running application.
     </Text>
   </Slide>
 );
@@ -207,13 +207,13 @@ const HowTeams: React.FC = () => (
     </Row>
     <Row gap={30} style={{ marginTop: 64 }}>
       {[
-        ["shadowqa setup", "Slack · GitHub · mode · project, each verified live"],
-        ["shadowqa compile <project>", "context → repository inspection → Gemini plan"],
-        ["shadowqa approve <plan>", "approves this exact digest, base SHA and command profile"],
-        ["shadowqa findings · repair", "what breaks later is reproduced, then repaired"],
+        ["Connect", "Slack · GitHub · mode · project, each verified live, from the app"],
+        ["Generate plan", "context → repository inspection → Gemini plan"],
+        ["Approve", "approves this exact digest, base SHA and command profile"],
+        ["Findings · Repair", "what breaks later is reproduced, then repaired"],
       ].map(([cmd, what]) => (
         <div key={cmd} style={{ flex: 1, borderTop: `1px solid rgba(244,241,234,0.28)`, paddingTop: 12 }}>
-          <div style={{ fontFamily: "Consolas, monospace", fontSize: 17, color: c.offwhite }}>{cmd}</div>
+          <div style={{ fontFamily: sansFamily, fontWeight: 600, fontSize: 17, color: c.offwhite }}>{cmd}</div>
           <div style={{ fontFamily: sansFamily, fontSize: 15, color: c.dim, marginTop: 6 }}>{what}</div>
         </div>
       ))}
@@ -255,7 +255,7 @@ const Modes: React.FC = () => (
   <Slide n={7} kicker="Automation modes" title="Four modes decide how much ShadowQA may do on its own — everywhere, including Live.">
     <Row gap={24} align="stretch" style={{ marginTop: 10 }}>
       <Mode name="observe" what="Watch and check only. ShadowQA never edits or publishes." live="diagnoses, never writes" />
-      <Mode name="approval" what="Ask first. Every plan and every repair waits for you." live="patch waits for `shadowqa live approve`" />
+      <Mode name="approval" what="Ask first. Every plan and every repair waits for you." live="patch waits for Approve in the Live tab" />
       <Mode name="auto-fix" what="Bounded automatic repair inside configured automatic paths; humans still merge." live="LOW-risk patches apply, still replay-verified" />
       <Mode name="full-auto" what="Same bounded scope plus policy-gated merging. Requires an explicit merge policy." live="same restricted scope; merge policy in the service" />
     </Row>
@@ -300,7 +300,7 @@ const LiveSlide: React.FC = () => (
           ["Diagnose", "Claude finds the root cause, GPT as the fallback; source maps point at the real file and line."],
           ["Patch · grade", "A minimal patch is proposed and risk-scored. The project mode decides whether it waits."],
           ["Validate · replay", "Behind a checkpoint: your linters and tests run, then Live replays your exact interaction. Fail → automatic rollback."],
-          ["Report", "The incident is a finding in `shadowqa findings`; `shadowqa live pr` opens the pull request."],
+          ["Report", "The incident is a finding on the Findings tab; Open pull request on the Live tab does the rest."],
         ].map(([k, v], i) => (
           <Row key={k} gap={18} align="flex-start" style={{ padding: "12px 0", borderTop: i ? `1px solid rgba(244,241,234,0.14)` : undefined }}>
             <span style={{ fontFamily: sansFamily, fontWeight: 500, fontSize: 17, width: 150, color: c.offwhite, flex: "0 0 150px" }}>{k}</span>
@@ -331,7 +331,7 @@ const Features: React.FC = () => (
         ["Bounded repair", "Two attempts per finding, a cooldown between them, then escalation to a human."],
         ["Approve the exact plan", "Approval binds a digest, a base SHA and a command profile. Any drift invalidates it."],
         ["Live risk grading", "Runtime patches are graded LOW / MEDIUM / HIGH; only LOW may ever apply without a person."],
-        ["Kill switch", "`shadowqa pause` stops and cancels everything, in every mode."],
+        ["Kill switch", "One switch in the desktop app's Admin tab stops and cancels everything, in every mode."],
         ["Works in your IDE", "OpenCode, Claude Code and Codex sessions attach to your terminal; a VS Code extension shows findings inline."],
       ].map(([t, d]) => (
         <Card key={t} width="100%" title={t}>{d}</Card>
@@ -344,7 +344,7 @@ const Architecture: React.FC = () => (
   <Slide n={10} tone="dark" kicker="One product" title="Two runtimes, one vocabulary, one findings list.">
     <Row gap={0} align="center" justify="center" style={{ marginTop: 30 }}>
       <Col gap={14}>
-        <Node width={260} sub="commander · both editions">shadowqa CLI</Node>
+        <Node width={260} sub="Electron + React · both editions">Desktop app</Node>
         <Node width={260} sub="findings · sessions · attach">VS Code extension</Node>
         <Node width={260} icon={<ChromeMark size={18} />} sub="Claude · ChatGPT side panel">Browser extension</Node>
       </Col>
@@ -360,7 +360,7 @@ const Architecture: React.FC = () => (
       {[
         ["POST /live/projects/:id/incidents", "a Live incident becomes a finding"],
         ["GET /live/policy/:project", "the project mode governs Live"],
-        ["shadowqa repair <live finding>", "delegates to Live: apply → validate → replay"],
+        ["Repair on a Live finding", "delegates to Live: apply → validate → replay"],
       ].map(([k, v]) => (
         <Col key={k} gap={6} align="center">
           <span style={{ fontFamily: "Consolas, monospace", fontSize: 17, color: c.offwhite }}>{k}</span>
@@ -383,7 +383,7 @@ const CloseSlide: React.FC = () => (
       <Col gap={10} align="center" style={{ marginTop: 20 }}>
         <span style={{ fontFamily: "Consolas, monospace", fontSize: 24, color: c.charcoal }}>github.com/BlueBrik1/shadowqa</span>
         <span style={{ fontFamily: sansFamily, fontSize: 16, color: c.faint, letterSpacing: 2, textTransform: "uppercase" }}>
-          shadowqa setup · shadowqa compile · shadowqa live start
+          observe → plan → verify → repair
         </span>
       </Col>
     </AbsoluteFill>

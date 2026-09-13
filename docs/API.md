@@ -79,7 +79,7 @@ requires `Authorization: Bearer <token>`. There are exactly two kinds of token:
 
 | Token | Held by | May |
 | --- | --- | --- |
-| **owner** | the CLI and the companion | everything |
+| **owner** | the desktop app and the companion | everything |
 | **extension** | one paired browser extension | read status/projects/conversations, capture, pause, untrack, delete a conversation's context, read items/plans/tasks/findings |
 
 `requireOwner` rejects an extension token on every route that changes a project, approves a plan,
@@ -110,7 +110,7 @@ arbitrary-URL fetch to it: it forwards a fixed set of named requests and nothing
 | `GET /watchers`, `POST /projects/:id/watch` | Saved-file watching. It runs inside the service because the embedded database is single-process. |
 | `GET /observers`, `GET /observers/sessions`, `POST /observers/subscribe`, `/unsubscribe`, `/sweep` | Local Claude Code and Codex sessions, and the opt-in subscriptions that capture them. |
 | `POST /pair/start` | Owner only. Mints a one-use, ten-minute pairing code. |
-| `POST /pair/redeem` | Deliberately unauthenticated: the short-lived code the user read from their own terminal is the credential. Returns the extension token. |
+| `POST /pair/redeem` | Deliberately unauthenticated: the short-lived code the user read from the desktop app's Context tab is the credential. Returns the extension token. |
 | `POST /pair/revoke` | Owner only. Revokes every paired extension. |
 
 Task states are `queued → preparing → running → verifying → ready`, with `waiting_for_runner`

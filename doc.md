@@ -427,3 +427,55 @@ Anthropic first and OpenAI second because that is what its detector was built an
 The brand was redone at the same time so that the CLI, the extensions, the Live overlay, the film
 and the deck read as one thing: charcoal and off-white only, red for wrong and green for right,
 Work Sans and Source Serif Pro. See `docs/BRAND.md`.
+
+## 18. Addendum — the CLI is replaced by a desktop app (2026-09-12)
+
+§16's REVISIONS TO PLAN specified "a simple CLI with clean UI/showy glyphs/designs" instead of a
+web frontend, reasoning that a terminal was sufficient for approvals, automation mode, and
+everything else. In practice this pushed real cost onto every new user: creating a Slack app by
+hand from a manifest, generating a GitHub App and downloading its private key, and typing three
+separate tokens into interactive terminal prompts before ShadowQA observed anything. None of that
+is inherent to the product's design in §§1–17 — it was a consequence of the interface being a
+terminal, not of the underlying service, policy engine, or execution model.
+
+This reverses that one interface decision, not the architecture. `desktop/` is a new Electron
+application that is the onboarding, dashboard, plan-review, job and findings surface for both
+editions, plus ShadowQA Live; `src/cli/` and `individual/cli/` are deleted outright. Everything
+those command trees called — `src/api/server.ts`, `individual/service/server.ts`,
+`src/scheduler/jobs.ts`, `src/runner/runner.ts`, the planner, the policy engine, the publisher — is
+unchanged. The desktop app is a new caller of the same HTTP APIs the CLI's own `src/cli/client.ts`
+was a thin wrapper over; moving the interface did not move the trust boundary.
+
+**The specific complaint this addresses:** every integration must be connectable from inside the
+app or the user's own browser, with no `.env` editing and no instruction to open a local port.
+Concretely:
+
+- **GitHub** uses GitHub's [App Manifest flow](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest):
+  the app opens an auto-submitting form to `github.com`, which creates the App and redirects to a
+  one-time local loopback listener the app opened for exactly this exchange (`desktop/electron/loopback.ts`,
+  the same OAuth-loopback pattern `gh auth login` and `gcloud auth login` use — the user never sees
+  or types that address). The app id, PEM private key and webhook secret come back automatically
+  from `POST /app-manifests/{code}/conversions`; none of it is copied by hand or written to a file
+  the user can see.
+- **Slack** has no equivalent programmatic app-creation API. The one remaining manual step is
+  pasting a pre-filled manifest into Slack's own "create from an app manifest" screen; installing to
+  a workspace shows the bot token immediately, and Socket Mode's app-level token — which Slack only
+  issues from its own Basic Information page — is the single unavoidable paste. Both are validated
+  live (`src/core/connect.ts`, unchanged from the CLI's own `verifySlack`) and stored in the OS
+  keychain.
+- **Anthropic, OpenAI and Gemini** keys have no OAuth flow anywhere in the industry; they are pasted
+  into a masked field with a link to the provider's console, validated live, and stored in the OS
+  keychain — never a project `.env` file.
+
+**What did not change:** the policy engine, the four automation modes, the isolation and
+verification pipeline in §8–§9, the security boundaries in §11, and the individual edition's
+browser-capture/companion design in the §17 addendum. Team mode still needs one always-on,
+network-reachable backend the whole team shares — the desktop app removes the manual setup around
+starting and configuring it (one-click local Postgres via Docker Compose, in-app bootstrap), not
+the requirement that something keeps running; `scripts/serve-team.ts` and `scripts/runner-start.ts`
+are the headless equivalents for a real server deployment, replacing `shadowqa serve` and
+`shadowqa runner start` without reintroducing a CLI users are expected to operate day to day.
+
+The film and the slide deck were re-rendered from the desktop app's actual screens once it existed,
+for the same reason `video/scripts/extract.mjs` lifts code verbatim from the repository: showing a
+terminal that no longer exists would have been a fabrication, not a simplification.

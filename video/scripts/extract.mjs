@@ -19,9 +19,9 @@ const out = path.resolve(here, "..", "src", "generated");
 const snippets = [
   {
     key: "brand",
-    file: "src/cli/ui.ts",
+    file: "src/core/brand.ts",
     anchor: /^export const BRAND/,
-    lines: 6,
+    lines: 1,
     lang: "typescript",
   },
   {
@@ -47,21 +47,21 @@ const snippets = [
   },
   {
     key: "modeHelp",
-    file: "src/cli/setup.ts",
+    file: "src/core/connect.ts",
     anchor: /^export const MODE_HELP/,
     lines: 8,
     lang: "typescript",
   },
   {
     key: "slackChannels",
-    file: "src/cli/setup.ts",
+    file: "src/core/connect.ts",
     anchor: /^export async function slackChannels/,
     lines: 19,
     lang: "typescript",
   },
   {
     key: "verifyClone",
-    file: "src/cli/setup.ts",
+    file: "src/core/connect.ts",
     anchor: /^export async function verifyClone/,
     lines: 16,
     lang: "typescript",
@@ -289,12 +289,18 @@ async function extract(list, { required }) {
 }
 
 // Real CLI surface, read from the command registrations rather than retyped.
+// TODO(desktop-app): src/cli/main.ts is gone once the desktop app replaces the CLI; this returns
+// [] until the film's "commands" segment is replaced with real desktop-app screen names.
 async function commands() {
-  const text = await readFile(path.join(repo, "src/cli/main.ts"), "utf8");
-  const found = [
-    ...text.matchAll(/\.command\("([a-z-]+)(?: [<[][^"]*)?"\)/g),
-  ].map((m) => m[1]);
-  return [...new Set(found)];
+  try {
+    const text = await readFile(path.join(repo, "src/cli/main.ts"), "utf8");
+    const found = [
+      ...text.matchAll(/\.command\("([a-z-]+)(?: [<[][^"]*)?"\)/g),
+    ].map((m) => m[1]);
+    return [...new Set(found)];
+  } catch {
+    return [];
+  }
 }
 
 async function individualCommands() {

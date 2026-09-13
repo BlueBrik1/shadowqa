@@ -17,12 +17,11 @@
       {"command": "shadowqa.resume", "title": "ShadowQA: Resume Observation"},
       {"command": "shadowqa.mode", "title": "ShadowQA: Change Automation Mode"},
       {"command": "shadowqa.watch", "title": "ShadowQA: Watch Saved Files"},
+      {"command": "shadowqa.setToken", "title": "ShadowQA: Set API Token"},
       {"command": "shadowqa.details", "title": "ShadowQA: Show Details"}
     ],
     "menus": {"view/title": [{"command": "shadowqa.refresh", "when": "view == shadowqa.control", "group": "navigation"}]},
     "configuration": {"title": "ShadowQA", "properties": {
-      "shadowqa.cliPath": {"type": "string", "default": "", "description": "Absolute path to ShadowQA dist/cli/main.js."},
-      "shadowqa.nodePath": {"type": "string", "default": "node", "description": "Node.js executable."},
       "shadowqa.serviceUrl": {"type": "string", "default": "http://127.0.0.1:4380", "description": "ShadowQA API URL."},
       "shadowqa.refreshSeconds": {"type": "number", "default": 15, "minimum": 5, "description": "Status refresh cadence."}
     }}

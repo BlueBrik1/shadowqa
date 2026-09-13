@@ -6,15 +6,17 @@
 
 **ShadowQA Live — the running web app → captured incident → Claude diagnosis (GPT fallback) → risk-graded patch → replay-verified fix → the same findings list, under the same automation mode.**
 
-ShadowQA is a TypeScript service, a terminal CLI, a local Docker runner, a thin VS Code extension, and — for the individual edition — a Manifest V3 browser side panel and a local companion. Ordinary activity accumulates as source-linked context; `shadowqa compile` (or `shadowqa-individual plan`) starts planning. Gemini is the sole inference provider for planning in both editions. These choices implement the final **REVISIONS TO PLAN** in [doc.md](doc.md).
+ShadowQA is a TypeScript service, a desktop app, a local Docker runner, a thin VS Code extension, and — for the individual edition — a Manifest V3 browser side panel and a local companion. Ordinary activity accumulates as source-linked context; pressing **Generate plan** in the desktop app starts planning. Gemini is the sole inference provider for planning in both editions.
 
-Plans and checks cover the code. **ShadowQA Live** ([`live/`](live/README.md)) covers the running application: a browser SDK or Chrome extension watches clicks, requests, console output and exceptions on localhost, joins them into one incident, and a Python bridge diagnoses, patches, validates and replays the exact interaction before anything is called fixed. Live reports every incident to the ShadowQA service as a `detector: "live"` finding, obeys the project's automation mode, and takes `approve`/`undo`/`pr`/`dismiss` from the ShadowQA CLI. It is started with `shadowqa live start`, and it is the product's autonomous fixer for runtime bugs.
+This was originally built CLI-first (see the historical **REVISIONS TO PLAN** in [doc.md](doc.md)); the desktop app in [`desktop/`](desktop/) later replaced the terminal entirely as the product's interface — every command the CLI offered has a screen, and no manual `.env` editing or file-based configuration is part of the normal path anymore. §18 of [doc.md](doc.md) records that change and why.
 
-Both editions share one codebase, one PostgreSQL schema, one policy engine and one verification path; they keep their data in separate tenants. The individual edition lives in [`individual/`](individual/README.md) and defaults to an embedded PostgreSQL engine, so it needs no Docker and no database server.
+Plans and checks cover the code. **ShadowQA Live** ([`live/`](live/README.md)) covers the running application: a browser SDK or Chrome extension watches clicks, requests, console output and exceptions on localhost, joins them into one incident, and a Python bridge diagnoses, patches, validates and replays the exact interaction before anything is called fixed. Live reports every incident to the ShadowQA service as a `detector: "live"` finding, obeys the project's automation mode, and takes approve/undo/pr/dismiss from the desktop app's Live tab, which also starts and stops the bridge process. It is the product's autonomous fixer for runtime bugs.
+
+Both editions share one codebase, one PostgreSQL schema, one policy engine and one verification path; they keep their data in separate tenants. The individual edition lives in [`individual/`](individual/README.md) and defaults to an embedded PostgreSQL engine, so it needs no Docker and no database server — the desktop app runs it in-process.
 
 The launch film and the slide deck are in [`deliverables/`](deliverables/): `deliverables/shadowqa.mp4` and `deliverables/shadowqa-slides.pdf`. The brand rules are in [docs/BRAND.md](docs/BRAND.md).
 
-Start with [SETUP.md](SETUP.md). The account-free demos are available immediately:
+Start with [SETUP.md](SETUP.md). The account-free demos are available immediately (these are standalone scripts, not the desktop app, and need no accounts):
 
 ```powershell
 npm ci
@@ -25,43 +27,41 @@ npx tsx scripts/individual-demo.ts    # individual edition
 
 The demo uses a real embedded PostgreSQL engine, Git snapshots, and actual Node tests. Its model output and repair are scripted fixtures: it does not call Gemini, impersonate a live OpenCode run, or open a GitHub PR. The separate `npm run test:sandbox` contract test uses real Docker and the pinned OpenCode server.
 
-## Daily workflow
-
-Connect the accounts once. Each step is verified live before it is recorded:
+## The desktop app
 
 ```powershell
-shadowqa setup          # Slack → GitHub → automation mode → project
+npm ci
+npm run desktop:build
+npx electron dist-desktop/desktop/electron/main.js
+# or, for hot reload while developing the app itself:
+npm run desktop:dev
 ```
 
-Then run these in separate terminals:
+Onboarding is **Welcome → Solo or Team → connect integrations → "ShadowQA is watching" → Generate plan → launch agent**:
+
+1. **Welcome.** Choose Solo (this machine only, reads your AI conversations) or Team (Slack + GitHub, shared with your team).
+2. **Connect.** Every integration is connected from inside the app or your system browser — nothing is written to a project `.env` file, and nothing asks you to visit a local port:
+   - **GitHub** uses GitHub's own [App Manifest flow](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest): the app opens an auto-submitting form to `github.com`, GitHub creates the App and redirects back to a one-time local loopback listener the app opened for exactly this purpose (the same pattern `gh auth login` uses — you never see or type that address), and the app id, private key and webhook secret come back automatically over GitHub's API. Nothing is copied by hand.
+   - **Slack** has no equivalent app-creation API, so the one manual step is pasting a pre-filled app manifest into Slack's own "create from manifest" screen; installing to a workspace shows the bot token right there, and generating a Socket Mode app-level token (the one credential Slack only issues from its own page) is the single unavoidable paste. Both are validated live and stored in the OS keychain, never a file.
+   - **Anthropic / OpenAI / Gemini** keys are pasted into a masked field with a "Get a key" link to the provider's console — no OAuth exists for these anywhere, so this is the same pattern every desktop AI tool uses. Validated with a live call, stored in the OS keychain.
+   - **Solo's** Claude Code / Codex detection and browser-extension pairing (a short numeric code, not a token) work the same way, no typing a path or editing a config file.
+3. **"ShadowQA is watching."** A dashboard shows sources, connection health, Gemini usage and the kill switch, replacing the old interactive terminal command center.
+4. **Generate plan.** One button compiles confirmed context into a plan; review it (steps, affected files, acceptance criteria, risk flags, open questions) and Approve or Reject.
+5. **Launch agent.** Approval enqueues a job; its detail screen shows live progress, the verified diff, the exact command to open the same session in your IDE terminal, Cancel, and Open PR.
+
+Solo's local service (embedded PostgreSQL, planning, execution, QA) runs inside the desktop app's own process for as long as it is open — there is no separate `serve` step to remember. Team's shared backend needs one always-on machine reachable by the whole team; an administrator either starts it from the desktop app itself (which can also start a local Postgres via Docker Compose with one click) or points every teammate's app at an already-running one started headlessly with `npm run serve:team` (see below). A teammate who is only joining an existing team just pastes the service URL and the member token their admin issued — no GitHub/Slack setup on their part at all.
+
+## Headless / server deployment
+
+The desktop app is the normal interface, but the team edition's shared backend, and a Docker execution runner, are ordinary long-running services that don't need a GUI and can run on a server:
 
 ```powershell
-shadowqa serve
-shadowqa runner start
-shadowqa ui
+npm run serve:team          # API + durable worker + Slack Socket Mode + GitHub reconciliation
+npm run runner:map          # on a runner machine: review and consent to one repository mapping
+npm run runner:start        # on a runner machine: lease and execute approved jobs
 ```
 
-The command center shows project modes and source counts. The same actions are available individually:
-
-```powershell
-shadowqa status
-shadowqa watching
-shadowqa project sync my-project
-shadowqa context my-project --query "duplicate submission"
-shadowqa confirm SOURCE_ID
-shadowqa compile my-project --objective "Prevent duplicate submissions"
-shadowqa plan PLAN_ID
-shadowqa approve PLAN_ID
-shadowqa jobs
-shadowqa attach JOB_ID
-shadowqa diff JOB_ID
-shadowqa findings
-shadowqa repair FINDING_ID
-```
-
-An approval binds the actor to an immutable plan digest, repository SHA, command-profile digest, policy version, and expiry. Source edits, deletion, revocation, configuration changes, or a default-branch update invalidate affected execution. No model-generated shell command becomes an execution permission.
-
-The runner creates independent copies of committed files. It never applies a repair to the developer's original clone. Dirty originals block repair with a commit/stash instruction. Jobs sleep in the durable queue when no runner is available. Closing the IDE does not stop the service or runner; stopping the runner stops its active sandbox.
+`serve:team` reads the same environment variables and `shadowqa.config.json` the desktop app's admin flow writes into (or that you configure directly per [SETUP.md](SETUP.md)); the desktop app is simply a friendlier way to do the same first-run bootstrap. A runner is always a separate, dedicated machine — the administrator registers it from the desktop app's Admin tab (issues a runner credential) and then runs the two commands above on that machine.
 
 ## Automation modes
 
@@ -72,15 +72,13 @@ The runner creates independent copies of committed files. It never applies a rep
 | `auto-fix` | Yes | Only configured automatic paths with no detected risk flags | After independent verification | Human |
 | `full-auto` | Yes | Same restricted automatic scope | After independent verification | Explicit merge policy, exact head/checks, and repository rules required |
 
-```powershell
-shadowqa project mode my-project approval
-shadowqa pause
-shadowqa resume
-```
+An approval binds the actor to an immutable plan digest, repository SHA, command-profile digest, policy version, and expiry. Source edits, deletion, revocation, configuration changes, or a default-branch update invalidate affected execution. No model-generated shell command becomes an execution permission. Changing a project's mode (a dropdown in the desktop app's project screen) invalidates existing approvals.
 
-Mode changes invalidate existing approvals. Automatic modes can start a bounded repair for a reproduced standing-QA finding under the administrator who enabled that policy. They **do not turn every Slack message into a coding task**. Source-driven planning still starts with `compile`. Two failed repair proposals/attempts for a finding, cooldowns, daily caps, risk flags, missing prerequisites, or exhausted Gemini quota stop further automation.
+The runner creates independent copies of committed files. It never applies a repair to the developer's original clone. Dirty originals block repair with a commit/stash instruction. Jobs sleep in the durable queue when no runner is available. Closing the desktop app stops Solo's in-process service (and, if it was administering one, Team's); a headless `serve:team`/runner pair keeps running independently of anyone's desktop app.
 
-The same four modes govern Live. `observe` → Live diagnoses and never writes; `approval` → a patch waits for `shadowqa live approve`; `auto-fix` and `full-auto` → only LOW-risk patches apply on their own, and every applied patch is still replay-verified with an automatic rollback on failure. The mapping is `MODE_TO_AUTONOMY` in `live/backend/shadowqa/config.py`; Live reads it from `GET /live/policy/:project` and falls back to its local setting only while the service is unreachable.
+Mode changes invalidate existing approvals. Automatic modes can start a bounded repair for a reproduced standing-QA finding under the administrator who enabled that policy. They **do not turn every Slack message into a coding task**. Source-driven planning still starts with pressing Generate plan. Two failed repair proposals/attempts for a finding, cooldowns, daily caps, risk flags, missing prerequisites, or exhausted Gemini quota stop further automation.
+
+The same four modes govern Live. `observe` → Live diagnoses and never writes; `approval` → a patch waits for approval in the Live tab; `auto-fix` and `full-auto` → only LOW-risk patches apply on their own, and every applied patch is still replay-verified with an automatic rollback on failure. The mapping is `MODE_TO_AUTONOMY` in `live/backend/shadowqa/config.py` and mirrored in `src/live/local.ts`; Live reads it from `GET /live/policy/:project` and falls back to its local setting only while the service is unreachable.
 
 Protected paths are excluded from automated publication even after execution approval. Authentication, billing, dependencies, infrastructure, test changes and other sensitive content carry deterministic risk flags. Default automatic paths contain documentation only. Assertion removal, test disabling patterns, binary patches, renames, deletions, symlinks, submodules and changes outside the exact plan require manual handling. Broaden a profile deliberately, review it on both service and runner, and compile a new plan.
 
@@ -91,7 +89,7 @@ flowchart LR
   Slack[Slack Bolt / Socket Mode] --> Inbox[(PostgreSQL inbox)]
   GitHub[GitHub App / webhooks / polling] --> Inbox
   Inbox --> Memory[Revisions + full-text context]
-  CLI[CLI / native VS Code controls] --> Planner[Explicit Gemini compilation]
+  Desktop[Desktop app / native VS Code controls] --> Planner[Explicit Gemini compilation]
   Memory --> Planner
   Planner --> Policy[Plan digest + policy + approval]
   Policy --> Jobs[(Durable jobs + fenced leases)]
@@ -115,7 +113,7 @@ PostgreSQL is authoritative. Full-text retrieval filters tenant/project first. P
 2. It leases one job per repository with a fencing token, 60-second lease, and 10-second heartbeat.
 3. Git object reads export regular files at the approved SHA. Hooks, repository configuration and credential files are excluded from execution setup. Original files remain untouched.
 4. Baseline checks execute as UID 1000 in containers with no network, dropped capabilities, read-only root, bounded CPU/memory/PIDs, and only isolated workspace mounts.
-5. The OpenCode server uses the pinned SDK adapter. Its session ID is recorded before prompting. An authenticated host-loopback bridge lets the IDE attach to that exact session.
+5. The OpenCode server uses the pinned SDK adapter. Its session ID is recorded before prompting. An authenticated host-loopback bridge lets the IDE (or the desktop app's job detail screen) attach to that exact session.
 6. The agent has file tools, but no shell, external web tools, MCP integrations or subagent permissions. The administrator's check profile supplies executable argument arrays.
 7. OpenCode is paused while the runner freezes the diff. A fresh snapshot receives the patch and runs the approved checks in separate containers. Process exit codes, timeouts, required-check presence, patch scope, possible secrets, and tracked-file mutations are checked independently.
 8. The publisher repeats freshness and authorization checks, rebuilds the changed file contents from the frozen patch, writes Git objects to a dedicated `shadowqa/<job-id>` branch, and creates one source-safe PR. Deterministic commit metadata, branch names and PR markers allow retry reconciliation.
@@ -134,7 +132,7 @@ flowchart LR
   Bridge --> Diag[Claude diagnosis · GPT fallback]
   Diag --> Patch[Minimal patch + risk grade]
   Patch --> Gate{project mode}
-  Gate -->|approval| Wait[awaiting shadowqa live approve]
+  Gate -->|approval| Wait[awaiting approval in the Live tab]
   Gate -->|auto-fix · LOW risk| Apply[checkpoint → apply]
   Wait --> Apply
   Apply --> Validate[lint · tests]
@@ -142,39 +140,39 @@ flowchart LR
   Replay -->|pass| Verified[verified → PR]
   Replay -->|fail| Rollback[automatic rollback]
   Bridge <-->|incidents · policy · actions| Service[ShadowQA service /live]
-  Service --> Findings[shadowqa findings]
+  Service --> Findings[Findings screen]
 ```
 
-```powershell
-shadowqa live start --project lumen --workspace .\live   # creates the venv, starts the bridge, prints the snippet
-shadowqa live snippet                                     # <script src=".../shadowqa.js" data-bridge-url data-token>
-shadowqa live incidents                                   # what Live has captured
-shadowqa live incident inc_3f9a                           # chain · root cause · patch · risk · state
-shadowqa live approve inc_3f9a                            # apply → validate → replay
-shadowqa live undo inc_3f9a                               # roll back to the checkpoint
-shadowqa live pr inc_3f9a                                 # branch + pull request
-shadowqa findings                                         # live incidents appear beside check failures
-shadowqa repair inc_3f9a                                  # delegates to Live under the project's mode
-```
+The desktop app's **Live** tab starts the bridge the first time you open it (creating `live/backend/.venv` on first run, exactly like the old `shadowqa live start` did), then shows:
+
+- **Incidents.** A list of everything Live has captured, each opening into full detail: the failing route, the diagnosed root cause, the proposed patch, its risk grade, and — once verified — the pull request link.
+- **Approve → apply, validate, replay.** One button drives the same pipeline: apply the patch behind a Git checkpoint, run the workspace's linters and tests, replay the exact recorded interaction against the running app, and verify or automatically roll back.
+- **Undo / Open pull request / Dismiss.** The remaining actions a `diagnosed`/`verified` incident can take, matching the project's automation mode.
+- **Snippet.** A copy button for the `<script>` tag (or the Chrome extension instructions) that connects an app to Live.
+
+Live reports every state change to the ShadowQA service (`POST /live/projects/:id/incidents`), so a runtime incident is a finding with `rule: live:<route>` and appears beside check failures in the Findings tab; repairing a Live-sourced finding there delegates to the bridge under the same mode rules.
 
 - **Capture.** `live/extension/shadowqa.js` (served by the bridge at `/shadowqa.js`) and the Chrome MV3 extension record the interaction, its network requests, console output and exceptions. Only localhost origins are watched.
 - **Correlate.** The failing click, the request it caused and the exception it produced are joined into one incident — frontend and backend together — with source maps pointing at the real file and line.
 - **Diagnose.** Anthropic is the primary model and OpenAI the fallback (`SHADOWQA_PRIMARY_MODEL`, `SHADOWQA_FALLBACK_MODEL`); a Gemini key adds an optional third. Keys are sent in headers, never URLs, and every prompt/response is logged.
 - **Patch · grade.** The patch is minimal and graded LOW/MEDIUM/HIGH from deterministic rules (`live/backend/shadowqa/risk.py`): size, file count, sensitive paths such as auth, payments, schema and config.
 - **Validate · replay.** Behind a Git checkpoint, the workspace's linters and tests run; then the recorded interaction is replayed against the running app. A failed replay rolls back automatically.
-- **Report.** Every state change is mirrored to the ShadowQA service (`POST /live/projects/:id/incidents`), so a runtime incident is a finding with `rule: live:<route>`; `shadowqa live pr` opens the pull request.
 
 The bridge keeps its state in Mongo when `MONGO_URL` is set and in a local JSON store otherwise; no database is required for local use. The demo storefront ("Lumen Supply Co.", `live/frontend`) ships with a deliberately broken checkout so the whole loop can be exercised offline; `SHADOWQA_DEMO=0` disables its routes.
 
 ## Code map
 
-Every authored code module is listed here. [docs/CODE_REFERENCE.md](docs/CODE_REFERENCE.md) provides a generated declaration/method index with line numbers. [docs/API.md](docs/API.md) documents HTTP contracts; [SETUP.md](SETUP.md) documents configuration and deployment.
+Every authored code module is listed here. [docs/CODE_REFERENCE.md](docs/CODE_REFERENCE.md) provides a generated declaration/method index with line numbers (`npm run docs:code` regenerates it). [docs/API.md](docs/API.md) documents HTTP contracts; [SETUP.md](SETUP.md) documents configuration and deployment.
 
 | File | Responsibility |
 | --- | --- |
 | `src/core/contracts.ts` | Zod schemas for projects, profiles, policies, plans, checks, artifacts, IDs and job states; shared TypeScript types. |
 | `src/core/config.ts` | Environment defaults and JSON configuration parsing; duplicate repository/channel detection and profile validation. |
 | `src/core/security.ts` | Canonical hashing, random capabilities, constant-time signatures, token/control-character redaction, path containment, ACL checks and HTTPS enforcement. |
+| `src/core/connect.ts` | Slack/GitHub live verification (bot token, App JWT, installations, repositories), the GitHub App Manifest conversion, and clone-origin verification — used by the desktop app's connect flows. |
+| `src/core/bootstrap.ts` | First-run workspace initialization: registers configured projects and mints the first administrator credential, idempotent per tenant. |
+| `src/core/client.ts` | The team API's thin REST transport and OS-keychain credential storage, used by the runner, the headless scripts and (via IPC) the desktop app. |
+| `src/core/brand.ts` | The two-colour brand palette and glyphs, read by the desktop app's theme, the film and the slide deck, so every surface stays one brand by construction. |
 | `src/db/schema.ts` | Versioned PostgreSQL schema, durable inbox/outbox, sources/revisions, approvals, jobs/events, credentials, full-text index, audit and model usage. |
 | `src/db/database.ts` | PostgreSQL pool/transactions, tenant-scoped entity access, authentication, audit, outbound intents and retry backoff. |
 | `src/memory/sources.ts` | Delivery deduplication, monotonic source revisions, confirmation, full-text retrieval, deletion/revocation, retention and derived-context invalidation. |
@@ -195,23 +193,39 @@ Every authored code module is listed here. [docs/CODE_REFERENCE.md](docs/CODE_RE
 | `src/runner/bridge.ts` | Authenticated loopback proxy, bounded host/guest file transport and narrow model forwarding. |
 | `src/runner/opencode.ts` | Version-pinned SDK adapter, startup contract check, exact session creation, async prompts, progress, completion and abort. |
 | `src/runner/runner.ts` | Outbound worker, mapping consent, baseline/patch/check orchestration, heartbeat cancellation, OS-keyring session bindings and retained isolated workspaces. |
+| `src/runner/watch.ts` | Team edition's saved-file watcher: debounced, isolated snapshot, checked in the same network-disabled Docker sandbox a real job uses. |
+| `src/live/bridge.ts` | The `/live` routes of the service: policy for a project, incident intake mirrored into `finding` entities (`detector: "live"`), the action queue (`approve`/`undo`/`pr`/`dismiss`) and its lease endpoint for the bridge. |
+| `src/live/local.ts` | Starting and talking to the local Live bridge process: venv creation, the bridge's token protocol, and the mode → autonomy mapping shared with Python — used by the desktop app's Live tab. |
 | `src/api/identity.ts` | Membership-bound OAuth linking, one-use state, Slack OpenID signature/claims checks, provider-ID uniqueness; no display-name matching. |
 | `src/api/server.ts` | Authenticated Fastify API, schema validation, role/project enforcement, webhook raw-body validation, job model gateway and administrative controls. |
 | `src/api/worker.ts` | Durable inbox/outbox processing, bounded backoff, lease quarantine, periodic reconciliation/scans, standing repair and retention. |
-| `src/cli/client.ts` | API transport, HTTP errors and OS credential storage; explicit environment-token alternative for headless services. |
-| `src/cli/ui.ts` | Terminal glyphs, color, safe text rendering, compact tables and complete plan display. |
-| `src/cli/watch.ts` | Opt-in saved-file observation, debounce, content snapshots, isolated checks, stale-result detection and IDE diagnostic report. |
-| `src/cli/setup.ts` | Guided Slack → GitHub → mode → project connection; live `auth.test`, App JWT and installation listing, clone-origin verification, and `.env`/config merging that preserves unrelated settings. |
-| `src/cli/main.ts` | All CLI commands, setup/bootstrap/login, service lifecycle, review/approval UX, runner mapping, exact session attachment and interactive command center. |
-| `vscode-extension/src/extension.ts` | Native tree/commands, integrated CLI terminals, plan review, exact session/diff controls and saved-file diagnostics. No webview. |
+| `vscode-extension/src/extension.ts` | Native tree/commands, integrated terminals, plan review, exact session/diff controls and saved-file diagnostics — calls the API directly over `fetch`, storing its token in VS Code's secret storage. No webview, no CLI dependency. |
 | `infra/bridge.mjs` | Guest OpenCode/model file transport and lifecycle, running inside the no-network container. |
+| `scripts/serve-team.ts` | Headless entrypoint for the team edition's shared service (API + worker + Slack + GitHub) — what a server runs so the whole team's desktop apps have something to connect to. |
+| `scripts/runner-map.ts` | Reviews and consents to one repository mapping on a runner machine before it is registered locally. |
+| `scripts/runner-start.ts` | Headless entrypoint for a runner machine: leases and executes approved jobs. |
+| `scripts/watch-project.ts` | Foreground saved-file watcher for one team project, launched by the VS Code extension's integrated terminal. |
 | `scripts/fixture.ts` | Creates disposable committed regression repositories without modifying a real project. |
 | `scripts/demo.ts` | Offline, explicitly scripted model/patch demonstration with actual failing/passing processes and durable state assertions. |
 | `scripts/sandbox-smoke.ts` | Live Docker/OpenCode contract checks: session creation, authenticated loopback, isolation, credential separation and cancellation. |
-| `scripts/code-reference.ts` | Generates the declaration/method reference from the TypeScript AST. |
+| `scripts/code-reference.ts` | Generates the declaration/method reference from the TypeScript AST, across `src/`, `individual/`, `vscode-extension/` and `desktop/`. |
 | `scripts/individual-demo.ts` | End-to-end individual check in a disposable home: pairing, capture, extraction, planning, isolation, patch review, real test processes, branch commit and findings. |
 | `fixtures/duplicate-submit/src/submit.js` | Deliberately broken in-flight submission guard used by both demos. |
 | `fixtures/duplicate-submit/tests/submit.test.js` | Regression test and independent later-submission behavior check. |
+
+### The desktop app
+
+| File | Responsibility |
+| --- | --- |
+| `desktop/electron/main.ts` | Boots Solo's local service in-process on launch, registers every native/IPC bridge (folder picker, OS keychain, GitHub/Slack connect flows, Team service lifecycle, Live bridge, companion install), and creates the window. |
+| `desktop/electron/preload.ts` | The only surface exposed to the renderer via `contextBridge`: native pickers, keychain, and the typed calls into every IPC handler above. All project/plan/job/finding data flows over plain `fetch` to the local API instead. |
+| `desktop/electron/team.ts` | Boots `src/api/server.ts` + the durable worker in-process for a team admin, restoring GitHub/Slack credentials from the keychain into `process.env` first (writing the GitHub private key to a local file, since the adapter expects a path). |
+| `desktop/electron/loopback.ts` | The ephemeral local HTTP listener used once per GitHub connect — the same OAuth-loopback pattern `gh`/`gcloud` use, never a URL the user visits themselves. |
+| `desktop/electron/githubManifest.ts` | Builds the auto-submitting HTML form that hands GitHub's App Manifest endpoint a manifest with the loopback's real port as its redirect URL. |
+| `desktop/renderer/src/pages/*` | Solo's onboarding, dashboard, plan review, jobs, findings and context screens. |
+| `desktop/renderer/src/pages/team/*` | Team's dashboard, plan review (with the two-step approval challenge), jobs, findings and admin screens (projects, members, runner registration, diagnostics). |
+| `desktop/renderer/src/pages/Live.tsx` | The Live tab: start the bridge, incident list and detail, approve/undo/pr/dismiss, the SDK snippet. |
+| `desktop/renderer/src/lib/api.ts`, `teamApi.ts` | Thin `fetch` wrappers over the Solo and Team APIs respectively — the same shape `src/cli/client.ts` used to be, just called from the browser-side renderer instead of a terminal. |
 
 ### Individual edition
 
@@ -229,12 +243,12 @@ Every authored code module is listed here. [docs/CODE_REFERENCE.md](docs/CODE_RE
 | `individual/core/runner.ts` | One task per project, backend availability, plan freshness, agent-claim-independent verdict, event log. |
 | `individual/core/qa.ts` | Saved-file observation, scans, finding recording over the shared QA module, and the repair bounds. |
 | `individual/core/db.ts` | Embedded PostgreSQL (PGlite) by default; a configured `DATABASE_URL` instead. |
-| `individual/service/server.ts` | Authenticated loopback API for the CLI, the companion and the paired extension. |
+| `individual/service/server.ts` | Authenticated loopback API — booted in-process by the desktop app for Solo, exactly as it used to be booted by `shadowqa-individual serve`. |
 | `individual/service/auth.ts` | Owner token, endpoint file, one-use pairing codes and extension credentials. |
 | `individual/service/observers.ts` | Opt-in subscriptions to local coding sessions and the sweep that captures them. |
 | `individual/companion/src/native-messaging.ts` | Chrome's length-prefixed stdio framing, with both size limits enforced. |
 | `individual/companion/src/host.ts` | The native messaging host: a fixed set of named requests forwarded to the service, and nothing else. |
-| `individual/companion/src/install.ts` | Native messaging host manifest and its registration for Chrome, Edge and Chromium. |
+| `individual/companion/src/install.ts` | Native messaging host manifest and its registration for Chrome, Edge and Chromium — driven from the desktop app's Context screen. |
 | `individual/companion/src/adapters/claude-code.ts` | Claude Code transcript location, parsing, and hook install/removal. |
 | `individual/companion/src/adapters/codex.ts` | Codex rollout location and parsing. |
 | `individual/extension/manifest.json` | Manifest V3: `storage`, `sidePanel`, `nativeMessaging` and two host permissions. |
@@ -243,30 +257,8 @@ Every authored code module is listed here. [docs/CODE_REFERENCE.md](docs/CODE_RE
 | `individual/extension/src/content/index.ts` | Mutation and history observation, change detection, and capture only while tracked. |
 | `individual/extension/src/background/service-worker.ts` | The only caller of native messaging; tracking state, error translation and panel state. |
 | `individual/extension/src/sidepanel/` | The black-and-white side panel. |
-| `individual/cli/main.ts`, `setup.ts`, `ui.ts` | `shadowqa-individual` — the main interface. |
 
-### ShadowQA Live and the bridge between the two runtimes
-
-| File | Responsibility |
-| --- | --- |
-| `src/live/bridge.ts` | The `/live` routes of the service: policy for a project, incident intake mirrored into `finding` entities (`detector: "live"`), the action queue (`approve`/`undo`/`pr`/`dismiss`) and its lease endpoint for the bridge. |
-| `src/cli/live.ts` | `shadowqa live …` for both editions: venv creation, bridge start, incident tables, actions, the SDK snippet, and the mode → autonomy mapping shared with Python. |
-| `src/qa/repair.ts` | When a finding came from Live, `repair` delegates to the bridge under the project's mode instead of compiling a plan. |
-| `live/backend/server.py` | FastAPI application: `/api/shadowqa/*`, `/shadowqa.js`, the optional demo store, and the background loops that resume interrupted pipelines and poll the service for actions. |
-| `live/backend/shadowqa/api.py` | Incident, settings, health, fix/approve/undo/pr/dismiss endpoints; refuses settings writes while linked to the service. |
-| `live/backend/shadowqa/pipeline.py` | The incident state machine: captured → diagnosing → diagnosed → applying → validating → awaiting_replay → replaying → verified / replay_failed / rolled_back / committed. |
-| `live/backend/shadowqa/core_link.py` | Policy cache, incident reporting, action fetch and health against the ShadowQA service. |
-| `live/backend/shadowqa/config.py` | Settings, provider order (Anthropic → OpenAI → optional Gemini), `MODE_TO_AUTONOMY`, autonomy levels. |
-| `live/backend/shadowqa/llm.py` | Native Anthropic and OpenAI chat clients (JSON output, header auth), optional Gemini, prompt/response log. |
-| `live/backend/shadowqa/correlation.py`, `sourcemap.py` | Joins click → request → exception into one incident; maps minified frames to source. |
-| `live/backend/shadowqa/risk.py`, `validation.py`, `patching.py`, `git_ops.py` | Risk grading, workspace linters/tests, patch application, checkpoints, rollback, branch and PR. |
-| `live/backend/shadowqa/db.py` | Mongo when configured, otherwise a local JSON store with the same collection interface. |
-| `live/extension/shadowqa.js`, `live/extension/manifest.json` | The standalone browser SDK (served at `/shadowqa.js`) and the Chrome MV3 extension that injects it into localhost pages. |
-| `live/frontend/src/shadowqa/` | The SDK's source: capture, buffer, detector, correlation bridge, replay, overlay. |
-| `live/frontend/src/App.js` | "Lumen Supply Co." — the demo storefront with a deliberately broken checkout. |
-| `live/backend/demo_store/` | The demo API the storefront calls; the reproduced bug lives in `router.py`. |
-
-Supporting files: `package.json` and the lockfile pin application dependencies and commands; `tsconfig.json` and the extension config compile both targets; `vitest.config.ts` configures tests; `compose.yaml` provisions loopback-only PostgreSQL; `infra/sandbox.Dockerfile` builds the reviewed Node/OpenCode image; `.env.example` and `shadowqa.config.example.json` document every primary setting; `infra/slack-manifest.json` supplies Slack app permissions/events; `vscode-extension/package.json` declares IDE contributions; `vscode-extension/media/shadow.svg` is its code-native icon. `.gitignore`, `.dockerignore`, and `.vscodeignore` prevent secrets/dependencies/build output from leaking into inappropriate artifacts.
+Supporting files: `package.json` and the lockfile pin application dependencies and commands; `tsconfig.json`, `tsconfig.individual.json` and `tsconfig.desktop.json` compile the three TypeScript targets (business, individual, desktop); `vitest.config.ts` configures tests; `compose.yaml` provisions loopback-only PostgreSQL (the desktop app's Team admin flow can start this with one click); `infra/sandbox.Dockerfile` builds the reviewed Node/OpenCode image; `.env.example` and `shadowqa.config.example.json` document every primary setting for headless/server deployment; `infra/slack-manifest.json` is the base Slack manifest the desktop app's Slack connect flow pre-fills; `vscode-extension/package.json` declares IDE contributions; `vscode-extension/media/shadow.svg` is its code-native icon. `.gitignore`, `.dockerignore`, and `.vscodeignore` prevent secrets/dependencies/build output from leaking into inappropriate artifacts.
 
 ### Database records
 
@@ -278,15 +270,15 @@ The `entities` table stores typed JSON records under `(tenant, kind, id)` with a
 
 | Deliverable | Location | Format |
 | --- | --- | --- |
-| The one launch film | **`deliverables/shadowqa.mp4`** | 1920×1080 · 30 fps · 3 min 20 s · H.264 |
+| The one launch film | **`deliverables/shadowqa.mp4`** | 1920×1080 · 30 fps · H.264 |
 | The one slide deck | **`deliverables/shadowqa-slides.pdf`** | 11 pages · 1920×1080 |
 
 Both are rendered from `video/`, a [Remotion](https://www.remotion.dev) project with one film composition
-(`ShadowQA`: the problem → the team flow → the individual flow → Live → what is built in → close) and one
+(`ShadowQA`: the problem → the desktop app's onboarding and daily flow → Live → what is built in → close) and one
 slide composition (`ShadowQA-Slides`, one frame per slide). Every code element on screen is lifted out of this
 repository at build time by `video/scripts/extract.mjs`: anchors are matched against the real files, and a
 moved anchor fails the build instead of letting the film drift away from the product. The brand palette is read
-from `BRAND` in `src/cli/ui.ts`; the mode → autonomy table from `live/backend/shadowqa/config.py`.
+from `BRAND` in `src/core/brand.ts`; the mode → autonomy table from `live/backend/shadowqa/config.py`.
 
 ```powershell
 cd video
@@ -306,6 +298,7 @@ npm run demo
 npx tsx scripts/individual-demo.ts
 npm run sandbox:build
 npm run test:sandbox
+npm run desktop:build
 npm run package:extension
 npm audit
 ```
@@ -318,6 +311,7 @@ npm audit
 | `tests/api.test.ts` | API authentication/roles, durable signed intake, retry dedupe, missing objects and schema validation. |
 | `tests/model-planner.test.ts` | Structured-output repair/cache, redaction, provider quota, atomic call budget, fabricated citations and unresolved conflicts. |
 | `tests/adapters-qa.test.ts` | Slack threads/edits/deletes/scope, PR head changes, bot/fork treatment, installation revocation, reproduced/flaky/environment findings and occurrence deduplication. |
+| `tests/connect.test.ts` | Slack/GitHub live verification and clone-origin checks (`src/core/connect.ts`) — the logic the desktop app's connect flows call. |
 | `tests/individual-capture.test.ts` | Turn identity, duplicate capture, streaming completion, conversation switching, partial coverage, project isolation, pausing and deletion of derived context. |
 | `tests/individual-adapters.test.ts` | ChatGPT and Claude adapters against page fixtures: roles, order, site ids, stripped controls, streaming and the unrecognised-page warning. |
 | `tests/individual-companion.test.ts` | Native-messaging framing and limits, pairing success/expiry/reuse/revocation, and the Claude Code and Codex session parsers. |
@@ -326,7 +320,7 @@ npm audit
 | `tests/live-bridge.test.ts` | Live incident → finding classification, policy and incident mirroring through the `/live` routes, repair delegation, the action lease and the `observe` block. |
 | `live/backend/tests/` | The Python side: correlation, source maps, pipeline fault handling, patching and checkpoints, the server SDK, security, and the backend integration run (`cd live/backend; python -m pytest`). |
 
-Tests use the same PostgreSQL schema and SQL as production, through an embedded PostgreSQL engine. They mock external network APIs; they do not prove live account permissions or model quality. The real sandbox smoke is separate because it needs Docker and the built image.
+Tests use the same PostgreSQL schema and SQL as production, through an embedded PostgreSQL engine. They mock external network APIs; they do not prove live account permissions, model quality, or the desktop app's GitHub/Slack browser flows (those need a real GitHub App and Slack workspace to exercise end to end). The real sandbox smoke is separate because it needs Docker and the built image. The desktop app itself is verified by building it (`npm run desktop:build`), type-checking both its processes (`npm run desktop:typecheck`), and launching it against the embedded database to confirm the in-process service answers real requests — see [docs/VALIDATION.md](docs/VALIDATION.md) for exactly what was run and what remains manual (the GitHub/Slack browser flows, and any Team/Postgres/Docker path).
 
 Two documents record the state of the work honestly rather than optimistically:
 
@@ -346,13 +340,15 @@ Two documents record the state of the work honestly rather than optimistically:
 - Local diagnostics become stale when saved content changes. Unverified model suspicions never authorize automatic repair. Environment/flaky failures are distinct from reproduced failures and demonstrated regressions.
 - Required human review, stale heads, ambiguous authority, missing permissions, missing check evidence or unavailable branch rules stop automatic merging. The publisher never modifies a human-owned PR branch.
 - Provider credentials, Slack/GitHub installations, production backups, an HTTPS endpoint when using webhooks, and any live deployment belong to your environment and must be configured in setup. This repository does not provision paid hosting or send messages during installation.
+- Team mode still needs one always-on, network-reachable backend for the whole team to share — the desktop app removes the manual configuration steps around it, not the need for someone to run it (either an admin's always-on desktop app, or `npm run serve:team` on a real server).
+- The desktop app's GitHub connect flow needs the system's default browser and one reachable local port for the duration of the connect step only (the ephemeral loopback listener in `desktop/electron/loopback.ts`); it is not started until you click Connect and closes itself immediately after.
 
 ### Live limits
 
 - Live watches localhost origins only; it is a development-time tool, not production monitoring.
 - Replay drives the real running app through the recorded interaction. A page that cannot be brought back to the recorded state is reported as `replay_failed` and rolled back; it is not marked fixed.
 - The risk grade is deterministic and conservative. MEDIUM and HIGH patches always wait for a person, in every mode.
-- Diagnosis needs `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`; with neither, incidents are captured and correlated but not diagnosed, and `shadowqa doctor` says so.
+- Diagnosis needs `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`; with neither, incidents are captured and correlated but not diagnosed, and the desktop app's Solo Context screen shows the missing key.
 - Without the ShadowQA service running, Live keeps its last known policy and its local setting; it never widens its own autonomy.
 
 ### Individual edition limits
@@ -373,15 +369,14 @@ Two documents record the state of the work honestly rather than optimistically:
   extraction stay on Gemini, and refuse with `MODEL_SETUP` when no key is configured rather than
   showing invented output.
 - Nothing merges on its own. The verified result is a local `shadowqa/<task>` branch; a pull request
-  needs a GitHub remote and `GITHUB_TOKEN`.
-- The scheduled sweep and the saved-file watcher only run while `shadowqa-individual serve` is up.
-  Tasks wait rather than fail when the chosen backend is unavailable.
-- The embedded database is single-process. Commands that need it refuse while the service holds it
-  and name the command to use instead.
+  needs a GitHub remote and a `GITHUB_TOKEN` (pasted the same way as the other provider keys).
+- The scheduled sweep and the saved-file watcher only run while the desktop app is open — they live
+  inside its in-process Solo service.
+- The embedded database is single-process. Commands that need it refuse while the service holds it.
 
 ## Vendor references
 
-Adapter contracts were checked against [OpenCode server](https://opencode.ai/docs/server/), [OpenCode CLI](https://opencode.ai/docs/cli/), [Gemini structured output](https://ai.google.dev/gemini-api/docs/structured-output), [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing), [Slack Socket Mode](https://docs.slack.dev/tools/bolt-js/concepts/socket-mode/), [Slack OpenID](https://docs.slack.dev/authentication/sign-in-with-slack/), [GitHub webhook signatures](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries), and [GitHub pull-request APIs](https://docs.github.com/en/rest/pulls/pulls).
+Adapter contracts were checked against [OpenCode server](https://opencode.ai/docs/server/), [OpenCode CLI](https://opencode.ai/docs/cli/), [Gemini structured output](https://ai.google.dev/gemini-api/docs/structured-output), [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing), [Slack Socket Mode](https://docs.slack.dev/tools/bolt-js/concepts/socket-mode/), [Slack OpenID](https://docs.slack.dev/authentication/sign-in-with-slack/), [GitHub webhook signatures](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries), [GitHub pull-request APIs](https://docs.github.com/en/rest/pulls/pulls), and [GitHub's App Manifest flow](https://docs.github.com/en/apps/sharing-github-apps/registering-a-github-app-from-a-manifest) (the desktop app's zero-copy-paste GitHub connect step).
 
 The individual edition was checked against [Chrome native messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging), [Chrome side panel](https://developer.chrome.com/docs/extensions/reference/api/sidePanel), the [Claude Code hooks reference](https://code.claude.com/docs/en/hooks), and the `claude --help`, `codex exec --help` and `opencode run --help` output of the versions installed during development — and, for the two session formats, against the transcript and rollout files those CLIs had actually written on disk.
 

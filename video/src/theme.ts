@@ -1,10 +1,10 @@
 import { interpolate, spring } from "remotion";
 
 /**
- * The film's palette is the product's palette. `BRAND` in `src/cli/ui.ts` is what the CLI prints
- * with, what the side panel and the Live overlay are painted in, and what this film uses for its
- * ground and its ink. `video/scripts/extract.mjs` quotes that declaration on screen and fails the
- * build if it moves.
+ * The film's palette is the product's palette. `BRAND` in `src/core/brand.ts` is what the desktop
+ * app's renderer theme, the side panel and the Live overlay are painted in, and what this film uses
+ * for its ground and its ink. `video/scripts/extract.mjs` quotes that declaration on screen and
+ * fails the build if it moves.
  *
  * Two colours. Red for something wrong, green for something verified. Syntax highlighting inside
  * code blocks is the only other place a hue appears.

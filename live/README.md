@@ -2,12 +2,13 @@
 
 **The runtime half of ShadowQA: an ambient debugging & QA agent that lives inside the web application developers are already using.**
 
-Live is started from the ShadowQA CLI — `shadowqa live start --project <id>` (team edition) or
-`shadowqa-individual live start` — which creates the Python environment, links the bridge to the
-project's automation mode, and prints the SDK snippet. Its incidents appear in `shadowqa findings`
-and are approved, undone, dismissed or turned into pull requests from the same CLI. The setup for
-that path is [Part C of the root SETUP.md](../SETUP.md#part-c--shadowqa-live); the rest of this
-document describes the bridge itself and its standalone use.
+Live is started from the ShadowQA desktop app's **Live** tab (either edition), which creates the
+Python environment, links the bridge to the project's automation mode, and shows the SDK snippet.
+Its incidents appear on the desktop app's **Findings** tab and are approved, undone, dismissed or
+turned into pull requests from the same Live tab. The setup for that path is
+[Part C of the root SETUP.md](../SETUP.md#part-c--shadowqa-live); the rest of this document
+describes the bridge itself and its standalone use (running it directly with `uvicorn`, outside the
+desktop app, as the section below does).
 
 > You break it. ShadowQA understands it. ShadowQA fixes it. ShadowQA proves it. You keep working.
 
